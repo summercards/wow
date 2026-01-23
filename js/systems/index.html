@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel WoW - Modular Framework</title>
+    <style>
+        body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: "Microsoft YaHei", monospace; }
+        canvas { border: 2px solid #333; box-shadow: 0 0 20px #000; }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+
+    <!-- 1. Namespace Definition -->
+    <script src="js/namespace.js"></script>
+
+    <!-- 2. Core Modules -->
+    <script src="js/core/Constants.js"></script>
+    <script src="js/core/Utils.js"></script>
+    <script src="js/core/Input.js"></script>
+    <script src="js/core/EventEmitter.js"></script>
+
+    <!-- 3. Systems (Logic) -->
+    <script src="js/systems/BattleSystem.js"></script>
+    <script src="js/systems/SkillSystem.js"></script>
+
+    <!-- 4. 3C / Base Entities -->
+    <script src="js/3c/Camera.js"></script>
+    <script src="js/3c/Controller.js"></script>
+    <script src="js/3c/Unit.js"></script>
+
+    <!-- 5. Content (Specific Implementations) -->
+    <script src="js/entities/Warrior.js"></script>
+    <script src="js/entities/Mage.js"></script>
+    <script src="js/entities/Priest.js"></script>
+    <script src="js/entities/TargetDummy.js"></script>
+
+    <!-- 6. Main Entry Point -->
+    <script src="js/Main.js"></script>
+</body>
+</html>
