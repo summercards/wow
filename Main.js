@@ -9,11 +9,13 @@ window.onload = function() {
     const input = new WoW.Core.Input();
     const events = new WoW.Core.EventEmitter();
     const battleSystem = new WoW.Systems.BattleSystem(events);
-    const skillSystem = new WoW.Systems.SkillSystem(battleSystem);
+    const vfxSystem = new WoW.Systems.VFXSystem(battleSystem); // Init VFX
+    const skillSystem = new WoW.Systems.SkillSystem(battleSystem, vfxSystem); // Pass VFX
     const controller = new WoW.Core.Controller(input);
 
     WoW.State.BattleSystem = battleSystem;
     WoW.State.SkillSystem = skillSystem;
+    WoW.State.VFXSystem = vfxSystem;
 
     // Initialize Entities
     const player = new WoW.Content.Warrior(100, 300);
@@ -79,6 +81,7 @@ window.onload = function() {
         dummy.update(dt);
         
         battleSystem.update();
+        vfxSystem.update(dt); // Update VFX
     }
 
     function draw() {
@@ -104,6 +107,9 @@ window.onload = function() {
         drawUnit(mage);
         drawUnit(player);
 
+        vfxSystem.draw(ctx); // Draw VFX under UI but over units? Or over units.
+        // Usually VFX are on top of units
+        
         battleSystem.draw(ctx);
         drawUI();
     }
@@ -123,19 +129,20 @@ window.onload = function() {
     }
 
     function drawUI() {
-        const C = WoW.Core.Constants.COLORS;
-        
         // --- Player Frame ---
         drawBar(20, 20, 200, 20, player.hp, player.maxHp, '#e74c3c'); // HP
-        drawBar(20, 45, 200, 15, player.rage, player.maxRage, C.WARRIOR_RAGE); // Rage
+        drawResourceBar(20, 45, 200, 15, player); // Resource
         
         // --- Party Frames (Left Side) ---
         // Mage
         drawBar(20, 80, 150, 15, mage.hp, mage.maxHp, '#e74c3c');
+        drawResourceBar(20, 95, 150, 8, mage);
         ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(mage.name, 25, 91);
+        
         // Priest
-        drawBar(20, 105, 150, 15, priest.hp, priest.maxHp, '#e74c3c');
-        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(priest.name, 25, 116);
+        drawBar(20, 120, 150, 15, priest.hp, priest.maxHp, '#e74c3c');
+        drawResourceBar(20, 135, 150, 8, priest);
+        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(priest.name, 25, 131);
 
         // --- Target Frame ---
         if (player.target) {
@@ -148,10 +155,10 @@ window.onload = function() {
         const startX = 250;
         const startY = 500;
 
-        // Auto Attack Icon (Slot 0, fake)
+        // Auto Attack Icon
         drawAutoAttackIcon(startX, startY, player);
 
-        // Skills (Slot 1, 2, 3)
+        // Skills
         drawSkill(player.skills[1], startX + 50, startY, '1');
         drawSkill(player.skills[2], startX + 100, startY, '2');
         drawSkill(player.skills[3], startX + 150, startY, '3');
@@ -184,24 +191,37 @@ window.onload = function() {
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, w, h);
     }
+    
+    function drawResourceBar(x, y, w, h, unit) {
+        let color = '#ccc';
+        if (unit.resourceType === 'rage') color = '#C41F3B'; // Red
+        if (unit.resourceType === 'mana') color = '#3498db'; // Blue
+        
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = color;
+        // Ensure unit.resource is a number and defined
+        const res = unit.resource || 0;
+        const max = unit.maxResource || 1;
+        ctx.fillRect(x, y, Math.max(0, (res / max)*w), h);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, w, h);
+    }
 
     function drawAutoAttackIcon(x, y, unit) {
         ctx.fillStyle = '#222';
         ctx.fillRect(x, y, 40, 40);
         
-        // Swing timer overlay (Vertical or radial)
-        // Let's do a vertical fill based on swing timer
         if (unit.swingTimer > 0) {
-            ctx.fillStyle = '#555'; // Darker means waiting
+            ctx.fillStyle = '#555'; 
             const h = (unit.swingTimer / unit.swingSpeed) * 40;
             ctx.fillRect(x, y + 40 - h, 40, h);
         } else {
-            // Ready to swing
-            ctx.fillStyle = '#fff'; // Bright
+            ctx.fillStyle = '#fff'; 
             ctx.fillRect(x + 2, y + 2, 36, 36);
         }
         
-        // Sword icon text
         ctx.fillStyle = '#000';
         ctx.font = 'bold 20px Arial';
         ctx.fillText("⚔️", x + 8, y + 28);
@@ -211,7 +231,7 @@ window.onload = function() {
         
         ctx.fillStyle = '#fff';
         ctx.font = '10px Arial';
-        ctx.fillText("普攻", x + 8, y + 52); // "Auto"
+        ctx.fillText("普攻", x + 8, y + 52); 
     }
 
     function drawSkill(skill, x, y, key) {

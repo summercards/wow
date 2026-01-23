@@ -15,6 +15,7 @@ WoW.Core.Controller = class {
         if (this.input.isDown('1')) intent.actions.push('SKILL_1');
         if (this.input.isDown('2')) intent.actions.push('SKILL_2');
         if (this.input.isDown('3')) intent.actions.push('SKILL_3');
+        if (this.input.isDown('tab')) intent.actions.push('ACTION_NEXT_TARGET');
         
         return intent;
     }

@@ -4,6 +4,12 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
         this.name = "牧师"; 
         this.maxHp = 800;
         this.hp = 800;
+
+        this.resourceType = 'mana';
+        this.maxResource = 2500;
+        this.resource = 2500; // Explicitly full at start
+        this.manaRegen = 15;
+
         this.speed = 180;
         
         this.skills = {
@@ -11,7 +17,7 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 id: 1, 
                 name: '治疗术', 
                 castType: 'target',
-                cost: 0, 
+                cost: 200, 
                 rangeMin: 0, 
                 rangeMax: 500, 
                 cd: 3, 
@@ -24,7 +30,7 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 id: 2, 
                 name: '惩击', 
                 castType: 'target',
-                cost: 0, 
+                cost: 80, 
                 rangeMin: 0, 
                 rangeMax: 400, 
                 cd: 2, 
@@ -37,6 +43,12 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
 
     update(dt) {
         super.update(dt);
+
+        // Mana Regen
+        if (this.resource < this.maxResource) {
+            this.resource += this.manaRegen * dt;
+            if (this.resource > this.maxResource) this.resource = this.maxResource;
+        }
         
         const party = WoW.State.Party || [];
         
@@ -51,7 +63,7 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
             }
         });
 
-        if (healTarget && this.skills[1].currentCd <= 0) {
+        if (healTarget && this.skills[1].currentCd <= 0 && this.resource >= this.skills[1].cost) {
              const dist = WoW.Core.Utils.getCenterDistance(this, healTarget);
              if (dist <= 500) {
                  WoW.State.SkillSystem.cast(this, 1, healTarget);
@@ -62,7 +74,7 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
              }
         } else if (this.target && !this.target.isDead) {
             const dist = WoW.Core.Utils.getCenterDistance(this, this.target);
-            if (dist <= 400 && this.skills[2].currentCd <= 0) {
+            if (dist <= 400 && this.skills[2].currentCd <= 0 && this.resource >= this.skills[2].cost) {
                 WoW.State.SkillSystem.cast(this, 2, this.target);
             }
             

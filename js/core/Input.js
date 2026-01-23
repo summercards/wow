@@ -3,7 +3,7 @@ WoW.Core.Input = function() {
     
     window.addEventListener('keydown', (e) => {
         keys[e.key.toLowerCase()] = true;
-        if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].indexOf(e.code) > -1) {
+        if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','tab'].indexOf(e.key.toLowerCase()) > -1) {
             e.preventDefault();
         }
     });

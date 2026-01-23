@@ -1,6 +1,7 @@
 WoW.Systems.SkillSystem = class {
-    constructor(battleSystem) {
+    constructor(battleSystem, vfxSystem) {
         this.battleSystem = battleSystem;
+        this.vfxSystem = vfxSystem;
     }
 
     cast(source, skillId, target) {
@@ -9,7 +10,7 @@ WoW.Systems.SkillSystem = class {
 
         if (skill.currentCd > 0) return;
 
-        // Unified Resource Check
+        // Resource Check
         if (source.resource !== undefined && source.resource < skill.cost) {
             const msg = source.resourceType === 'rage' ? "怒气不足" : "法力不足";
             const color = source.resourceType === 'rage' ? "#ff0000" : "#3498db";
@@ -17,13 +18,13 @@ WoW.Systems.SkillSystem = class {
             return;
         }
 
+        // Range/Target Check
         if (skill.castType === 'target') {
             if (!target) {
                 this.battleSystem.addCombatText(source.x, source.y - 40, "无目标", "#aaa");
                 return;
             }
             const dist = WoW.Core.Utils.getCenterDistance(source, target);
-            
             if (skill.rangeMin > 0 && dist < skill.rangeMin) {
                 this.battleSystem.addCombatText(source.x, source.y - 40, "太近了", "#aaa");
                 return;
@@ -34,33 +35,38 @@ WoW.Systems.SkillSystem = class {
             }
         }
 
-        // Execute
+        // Execute Cost & CD
         skill.currentCd = skill.cd;
-        
-        // Unified Resource Deduct
         if(source.resource !== undefined) source.resource -= skill.cost;
 
-        // Warrior Skills
+        // Dispatch with VFX
+        // Warrior
         if (source.name === '战士') {
             if (skill.id === 1) this.doCharge(source, target);
             if (skill.id === 2) this.doTaunt(source, target);
             if (skill.id === 3) this.doShieldWall(source);
         }
-        // Mage Skills
+        // Mage
         else if (source.name === '法师') {
             if (skill.id === 1) { // Fireball
-                this.battleSystem.dealDamage(source, target, 2.5);
-                this.battleSystem.addCombatText(target.x, target.y - 30, "火球术", "#e67e22");
+                // Spawn Projectile -> Damage on hit
+                this.vfxSystem.spawnProjectile(source, target, '#e67e22', 400, () => {
+                    this.battleSystem.dealDamage(source, target, 2.5);
+                    this.battleSystem.addCombatText(target.x, target.y - 30, "火球术", "#e67e22");
+                });
             }
         }
-        // Priest Skills
+        // Priest
         else if (source.name === '牧师') {
             if (skill.id === 1) { // Heal
+                this.vfxSystem.spawnBeam(source, target, '#f1c40f'); // Yellow beam
                 this.battleSystem.heal(source, target, skill.value);
             }
             if (skill.id === 2) { // Smite
+                this.vfxSystem.spawnBeam(source, target, '#f39c12'); // Orange/Gold beam
                 this.battleSystem.dealDamage(source, target, 1.2);
                 this.battleSystem.addCombatText(target.x, target.y - 30, "惩击", "#f1c40f");
+                this.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#f39c12');
             }
         }
     }
@@ -79,19 +85,21 @@ WoW.Systems.SkillSystem = class {
         source.x = source.x + dx * moveRatio;
         source.y = source.y + dy * moveRatio;
         
-        // Check addResource existence
         if(source.addResource) source.addResource(20);
         this.battleSystem.addCombatText(source.x, source.y - 30, "冲锋!", "#fff");
+        this.vfxSystem.spawnImpact(source.x + source.width/2, source.y + source.height/2, '#fff');
         source.swingTimer = 0; 
     }
 
     doTaunt(source, target) {
         target.target = source;
         this.battleSystem.addCombatText(target.x, target.y - 40, "嘲讽!", "#ff0000");
+        this.vfxSystem.spawnImpact(target.x + target.width/2, target.y, '#ff0000');
     }
 
     doShieldWall(source) {
         source.addBuff({ name: '盾墙', duration: 10 });
         this.battleSystem.addCombatText(source.x, source.y - 50, "盾墙!", "#fff");
+        this.vfxSystem.spawnImpact(source.x + source.width/2, source.y + source.height/2, '#aaa');
     }
 };

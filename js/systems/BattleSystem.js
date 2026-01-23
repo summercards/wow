@@ -24,9 +24,16 @@ WoW.Systems.BattleSystem = class {
         // Rage logic (Using unified addResource)
         if (source.resourceType === 'rage') {
             source.addResource(15);
+            // Visual feedback for Rage generation on hit
+            this.addCombatText(source.x, source.y - 40, "+15 怒气", "#C41F3B");
         }
         if (target.resourceType === 'rage') {
-            target.addResource(damage / 5);
+            const rageGain = Math.floor(damage / 5);
+            if (rageGain > 0) {
+                target.addResource(rageGain);
+                // Visual feedback for Rage generation on taking damage
+                this.addCombatText(target.x, target.y - 40, `+${rageGain} 怒气`, "#C41F3B");
+            }
         }
 
         if (target.hp <= 0) {

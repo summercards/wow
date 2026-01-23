@@ -13,9 +13,9 @@ WoW.Content.Warrior = class extends WoW.Entities.Unit {
         this.skills = {
             1: { 
                 id: 1, 
-                name: '冲锋', 
+                name: '冲锋', // Charge
                 castType: 'target',
-                cost: 0, 
+                cost: 0, // Generates rage, costs 0
                 rangeMin: 0,   
                 rangeMax: 800, 
                 cd: 15, 
@@ -24,9 +24,9 @@ WoW.Content.Warrior = class extends WoW.Entities.Unit {
             },
             2: { 
                 id: 2, 
-                name: '嘲讽', 
+                name: '嘲讽', // Taunt
                 castType: 'target',
-                cost: 0, 
+                cost: 10, // Costs Rage
                 rangeMin: 0, 
                 rangeMax: 200, 
                 cd: 8, 
@@ -35,9 +35,9 @@ WoW.Content.Warrior = class extends WoW.Entities.Unit {
             },
             3: { 
                 id: 3, 
-                name: '盾墙', 
+                name: '盾墙', // Shield Wall
                 castType: 'self',
-                cost: 0, 
+                cost: 30, // Costs Rage
                 rangeMin: 0, 
                 rangeMax: 0, 
                 cd: 60, 
@@ -52,8 +52,10 @@ WoW.Content.Warrior = class extends WoW.Entities.Unit {
         for (let k in this.skills) {
             if (this.skills[k].currentCd > 0) this.skills[k].currentCd -= dt;
         }
-        // Rage Decay
-        if (this.resource > 0) this.resource -= 2 * dt;
+        // Rage Decay: Decays if out of combat (simplified here as always decaying slowly if > 0)
+        // In real WoW, decay happens after being out of combat for a bit. 
+        // For simplicity, we just decay slowly constantly if not gaining.
+        if (this.resource > 0) this.resource -= 1 * dt; 
         this.resource = Math.max(0, this.resource);
     }
 
