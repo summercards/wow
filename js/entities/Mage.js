@@ -2,13 +2,19 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
     constructor(x, y) {
         super(x, y, 32, 32, '#3498db'); 
         this.name = "法师"; 
-        this.maxHp = 800;
-        this.hp = 800;
         
+        // Set base attributes for Mage
+        this.baseStr = 5;  // 法师力量低
+        this.baseAgi = 10; // 法师敏捷一般
+        this.baseSta = 15; // 法师耐力较低
+        this.baseInt = 25; // 法师拥有高智力
+        this.baseSpirit = 15; // 法师拥有较高的精神用于回蓝
+
+        // Set resource type and base max for mana
         this.resourceType = 'mana';
-        this.maxResource = 2000;
-        this.resource = 2000; // Explicitly full at start
-        this.manaRegen = 10; 
+        this.baseMaxResource = 1000; // 基础法力值，会随智力增长
+        this.resource = this.baseMaxResource; // 法力开局为满
+        this.manaRegenPerSecond = 10; // 基础法力回复速度
 
         this.speed = 180;
         
@@ -25,14 +31,19 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
                 color: '#e67e22' 
             }
         };
+
+        // Recalculate stats after all base properties are set
+        this.recalcStats();
     }
 
     update(dt) {
         super.update(dt);
         
-        // Mana Regen
+        // Mana Regen, scales with Spirit
         if (this.resource < this.maxResource) {
-            this.resource += this.manaRegen * dt;
+            // 1 Spirit = 0.5 mana regen per second
+            const totalManaRegen = this.manaRegenPerSecond + (this.currentSpirit * 0.5);
+            this.resource += totalManaRegen * dt;
             if (this.resource > this.maxResource) this.resource = this.maxResource;
         }
 
@@ -49,7 +60,6 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
                 this.y -= Math.sin(angle) * this.speed * dt;
             }
 
-            // Using VFX System logic now, so we just call cast
             if (this.skills[1].currentCd <= 0 && dist <= 400 && this.resource >= this.skills[1].cost) {
                 WoW.State.SkillSystem.cast(this, 1, this.target);
             }

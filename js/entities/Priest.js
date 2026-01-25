@@ -2,13 +2,19 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
     constructor(x, y) {
         super(x, y, 32, 32, '#ffffff'); 
         this.name = "牧师"; 
-        this.maxHp = 800;
-        this.hp = 800;
+        
+        // Set base attributes for Priest
+        this.baseStr = 5;  // 牧师力量低
+        this.baseAgi = 10; // 牧师敏捷一般
+        this.baseSta = 15; // 牧师耐力较低
+        this.baseInt = 20; // 牧师智力高
+        this.baseSpirit = 25; // 牧师拥有最高的精神用于回蓝
 
+        // Set resource type and base max for mana
         this.resourceType = 'mana';
-        this.maxResource = 2500;
-        this.resource = 2500; // Explicitly full at start
-        this.manaRegen = 15;
+        this.baseMaxResource = 1200; // 基础法力值，会随智力增长
+        this.resource = this.baseMaxResource; // 法力开局为满
+        this.manaRegenPerSecond = 15; // 基础法力回复速度
 
         this.speed = 180;
         
@@ -39,14 +45,19 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 value: 80
             }
         };
+
+        // Recalculate stats after all base properties are set
+        this.recalcStats();
     }
 
     update(dt) {
         super.update(dt);
 
-        // Mana Regen
+        // Mana Regen, scales with Spirit
         if (this.resource < this.maxResource) {
-            this.resource += this.manaRegen * dt;
+            // 1 Spirit = 0.5 mana regen per second
+            const totalManaRegen = this.manaRegenPerSecond + (this.currentSpirit * 0.5);
+            this.resource += totalManaRegen * dt;
             if (this.resource > this.maxResource) this.resource = this.maxResource;
         }
         

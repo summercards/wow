@@ -23,11 +23,19 @@ window.onload = function() {
     const mage = new WoW.Content.Mage(50, 200);
     const priest = new WoW.Content.Priest(50, 400);
     
-    // Inventory Setup
-    player.inventory[0] = WoW.Core.Items.create(1); // Recruit's Sword
-    player.inventory[1] = WoW.Core.Items.create(3); // Helm
-    player.inventory[2] = WoW.Core.Items.create(4); // Lava Plate
-    player.inventory[3] = WoW.Core.Items.create(5); // Thunderfury
+    // Initial Item Distribution for Player
+    player.inventory[0] = WoW.Core.Items.create(101); // 坚韧之剑
+    player.inventory[1] = WoW.Core.Items.create(103); // 板甲头盔
+    player.inventory[2] = WoW.Core.Items.create(201); // 大地之斧
+    player.inventory[3] = WoW.Core.Items.create(203); // 勇气头盔
+    player.inventory[4] = WoW.Core.Items.create(1001); // 逐风者之剑
+    player.inventory[5] = WoW.Core.Items.create(106); // 防御者护腕
+    player.inventory[6] = WoW.Core.Items.create(105); // 秘术师的戒指
+    player.inventory[7] = WoW.Core.Items.create(204); // 智慧项链
+    player.inventory[8] = WoW.Core.Items.create(1002); // 炎魔之手
+    // Automatically equip some starting gear for better stats
+    inventorySystem.equipItem(player, 0); // Equip 坚韧之剑
+    inventorySystem.equipItem(player, 1); // Equip 板甲头盔
 
     // Group Setup
     WoW.State.Party = [player, mage, priest];
@@ -135,7 +143,6 @@ window.onload = function() {
         if (liveEnemies.length === 0) return;
 
         let currentIndex = liveEnemies.indexOf(player.target);
-        // If current target is dead or not in list, currentIndex is -1, next becomes 0
         let nextIndex = (currentIndex + 1) % liveEnemies.length;
         
         player.target = liveEnemies[nextIndex];
@@ -188,9 +195,9 @@ window.onload = function() {
         
         ctx.fillRect(unit.x, unit.y, unit.width, unit.height);
         
-        // Render Weapon
-        if (unit.equipment && unit.equipment.main_hand) {
-            const item = unit.equipment.main_hand;
+        // Render Weapon (Only if Main Hand is equipped)
+        const mainHandItem = unit.equipment[WoW.Core.Constants.SLOTS.MAIN_HAND];
+        if (mainHandItem && mainHandItem.type === 'weapon') {
             ctx.save();
             ctx.translate(unit.x + unit.width/2, unit.y + unit.height/2);
             
@@ -198,7 +205,8 @@ window.onload = function() {
             if (unit.target && unit.target.x < unit.x) facingRight = false;
             if (!facingRight) ctx.scale(-1, 1);
 
-            ctx.fillStyle = item.iconColor || '#fff';
+            ctx.fillStyle = mainHandItem.iconColor || '#fff';
+            // Simple sword shape
             ctx.beginPath();
             ctx.moveTo(10, 5);
             ctx.lineTo(30, 5);
@@ -207,6 +215,7 @@ window.onload = function() {
             ctx.lineTo(10, -5);
             ctx.fill();
             
+            // Hilt
             ctx.fillStyle = "#4a3b2a";
             ctx.fillRect(5, -8, 5, 16); 
             ctx.fillRect(0, -2, 5, 4); 
@@ -228,16 +237,15 @@ window.onload = function() {
         drawBar(20, 20, 200, 20, player.hp, player.maxHp, '#e74c3c'); 
         drawResourceBar(20, 45, 200, 15, player); 
         
-        // Party Frames
-        drawBar(20, 80, 150, 15, mage.hp, mage.maxHp, '#e74c3c');
-        drawResourceBar(20, 95, 150, 8, mage);
-        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(mage.name, 25, 91);
+        // Party Frames (Moved slightly to avoid overlap with wider character panel)
+        const partyFrameY = 160;
+        drawBar(20, partyFrameY, 150, 15, mage.hp, mage.maxHp, '#e74c3c');
+        drawResourceBar(20, partyFrameY + 15, 150, 8, mage);
+        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(mage.name, 25, partyFrameY + 11);
         
-        drawBar(20, 120, 150, 15, priest.hp, priest.maxHp, '#e74c3c');
-        drawResourceBar(20, 135, 150, 8, priest);
-        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(priest.name, 25, 131);
-
-        // Removed Top Center Target Frame (moved to head)
+        drawBar(20, partyFrameY + 30, 150, 15, priest.hp, priest.maxHp, '#e74c3c');
+        drawResourceBar(20, partyFrameY + 45, 150, 8, priest);
+        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(priest.name, 25, partyFrameY + 41);
 
         // Action Bar
         const startX = 250;

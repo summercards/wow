@@ -8,19 +8,34 @@ WoW.Entities.Unit = class {
         this.color = color;
         
         this.name = "Unit";
-        // Base Stats
+        
+        // Base Attributes (New WoW-like stats, set by derived classes)
+        this.baseStr = 0;
+        this.baseAgi = 0;
+        this.baseSta = 0;
+        this.baseInt = 0;
+        this.baseSpirit = 0;
+
+        // Base values for HP, Resource, Damage (before stats/gear)
         this.baseMaxHp = 100;
         this.baseMaxResource = 100;
         this.baseMinDmg = 5;
         this.baseMaxDmg = 10;
         
-        // Calculated Stats
-        this.maxHp = 100;
-        this.hp = 100;
-        this.maxResource = 100;
-        this.resource = 100;
-        this.minDmg = 5;
-        this.maxDmg = 10;
+        // Calculated Stats (these will change based on gear and base stats)
+        this.maxHp = this.baseMaxHp;
+        this.hp = this.maxHp;
+        this.maxResource = this.baseMaxResource;
+        this.resource = this.maxResource; 
+        this.minDmg = this.baseMinDmg;
+        this.maxDmg = this.baseMaxDmg;
+
+        // Current total attributes (Base + Gear)
+        this.currentStr = 0;
+        this.currentAgi = 0;
+        this.currentSta = 0;
+        this.currentInt = 0;
+        this.currentSpirit = 0;
         
         this.speed = 200;
         
@@ -28,86 +43,135 @@ WoW.Entities.Unit = class {
         this.buffs = [];
         this.isDead = false;
         
-        // Inventory & Equipment
+        // Inventory & Equipment (Expanded WoW-like slots)
         this.inventory = new Array(16).fill(null); // 16 slot bag
         this.equipment = {
-            head: null,
-            chest: null,
-            main_hand: null
+            [WoW.Core.Constants.SLOTS.HEAD]: null,
+            [WoW.Core.Constants.SLOTS.SHOULDER]: null,
+            [WoW.Core.Constants.SLOTS.CHEST]: null,
+            [WoW.Core.Constants.SLOTS.WRIST]: null,
+            [WoW.Core.Constants.SLOTS.HANDS]: null,
+            [WoW.Core.Constants.SLOTS.WAIST]: null,
+            [WoW.Core.Constants.SLOTS.LEGS]: null,
+            [WoW.Core.Constants.SLOTS.FEET]: null,
+            [WoW.Core.Constants.SLOTS.NECK]: null,
+            [WoW.Core.Constants.SLOTS.FINGER1]: null,
+            [WoW.Core.Constants.SLOTS.FINGER2]: null,
+            [WoW.Core.Constants.SLOTS.TRINKET1]: null,
+            [WoW.Core.Constants.SLOTS.TRINKET2]: null,
+            [WoW.Core.Constants.SLOTS.MAIN_HAND]: null,
+            [WoW.Core.Constants.SLOTS.OFF_HAND]: null,
+            [WoW.Core.Constants.SLOTS.RANGED]: null,
         };
         
         // Auto Attack
         this.swingTimer = 0;
         this.swingSpeed = 2.0;
-        this.attackRange = 60;
+        this.attackRange = 60; // Melee range
+
+        // recalcStats will be called by derived class constructors after setting base stats
     }
 
+    // Detailed Stat Recalculation (WoW-like logic)
     recalcStats() {
-        let str = 0;
-        let sta = 0;
-        let int = 0;
-        let bonusMinDmg = 0;
-        let bonusMaxDmg = 0;
-
-        // Sum up stats from equipment
-        for (let slot in this.equipment) {
-            const item = this.equipment[slot];
-            if (item && item.stats) {
-                if (item.stats.str) str += item.stats.str;
-                if (item.stats.sta) sta += item.stats.sta;
-                if (item.stats.int) int += item.stats.int;
-                if (item.stats.minDmg) bonusMinDmg += item.stats.minDmg;
-                if (item.stats.maxDmg) bonusMaxDmg += item.stats.maxDmg;
-            }
-        }
-
-        // Preserve Percentages
+        // Preserve current HP/Resource percentages before stat changes
         const hpPct = this.maxHp > 0 ? this.hp / this.maxHp : 1;
         const resPct = this.maxResource > 0 ? this.resource / this.maxResource : 1;
 
-        // Apply Stats
-        // 1 Sta = 10 HP
-        this.maxHp = this.baseMaxHp + (sta * 10);
-        this.hp = this.maxHp * hpPct;
-        
-        // 1 Int = 15 Mana (if mana user)
-        if (this.resourceType === 'mana') {
-            this.maxResource = this.baseMaxResource + (int * 15);
-            this.resource = this.maxResource * resPct;
+        // 1. Reset current total attributes to base values
+        this.currentStr = this.baseStr;
+        this.currentAgi = this.baseAgi;
+        this.currentSta = this.baseSta;
+        this.currentInt = this.baseInt;
+        this.currentSpirit = this.baseSpirit;
+
+        let totalItemMinDmgBonus = 0;
+        let totalItemMaxDmgBonus = 0;
+
+        // 2. Sum up stats from all equipped items
+        for (const slotName in this.equipment) {
+            const item = this.equipment[slotName];
+            if (item && item.stats) {
+                if (item.stats.str) this.currentStr += item.stats.str;
+                if (item.stats.agi) this.currentAgi += item.stats.agi;
+                if (item.stats.sta) this.currentSta += item.stats.sta;
+                if (item.stats.int) this.currentInt += item.stats.int;
+                if (item.stats.spirit) this.currentSpirit += item.stats.spirit;
+                
+                // Items might have direct damage bonuses (e.g., trinkets)
+                if (item.stats.minDmg) totalItemMinDmgBonus += item.stats.minDmg;
+                if (item.stats.maxDmg) totalItemMaxDmgBonus += item.stats.maxDmg;
+            }
         }
 
-        // Damage
-        if (this.equipment.main_hand) {
-            this.minDmg = this.equipment.main_hand.stats.minDmg + Math.floor(str / 2);
-            this.maxDmg = this.equipment.main_hand.stats.maxDmg + Math.floor(str / 2);
-        } else {
-            this.minDmg = this.baseMinDmg + Math.floor(str / 2);
-            this.maxDmg = this.baseMaxDmg + Math.floor(str / 2);
+        // 3. Apply primary attribute conversions to core combat stats
+
+        // Max HP: 1 Stamina = 10 HP
+        this.maxHp = this.baseMaxHp + (this.currentSta * 10);
+        this.hp = this.maxHp * hpPct; // Restore HP percentage
+
+        // Max Resource: 
+        if (this.resourceType === 'mana') { // 1 Intellect = 15 Mana
+            this.maxResource = this.baseMaxResource + (this.currentInt * 15);
+            this.resource = this.maxResource * resPct; // Restore resource percentage
+        } else if (this.resourceType === 'rage') {
+            // Rage max is typically fixed at 100, not scaled by stats in WoW
+            this.maxResource = this.baseMaxResource; 
+            this.resource = this.maxResource * resPct; // Restore resource percentage
         }
+
+        // Min/Max Damage Calculation
+        const mainHandWeapon = this.equipment[WoW.Core.Constants.SLOTS.MAIN_HAND];
+        
+        if (mainHandWeapon && mainHandWeapon.type === 'weapon') {
+            // Weapon equipped: weapon base damage + attribute scaling
+            this.minDmg = mainHandWeapon.stats.minDmg + totalItemMinDmgBonus;
+            this.maxDmg = mainHandWeapon.stats.maxDmg + totalItemMaxDmgBonus;
+            
+            // Specific class scaling (e.g., Strength for Warriors)
+            if (this.name === '战士') {
+                this.minDmg += Math.floor(this.currentStr / 2); // 2 Str = 1 Dmg
+                this.maxDmg += Math.floor(this.currentStr / 2);
+            } else if (this.name === '法师' || this.name === '牧师') {
+                this.minDmg += Math.floor(this.currentInt / 4); // Example: 4 Int = 1 Dmg for casters
+                this.maxDmg += Math.floor(this.currentInt / 4);
+            }
+
+        } else {
+            // No weapon (fists): base unarmed damage + attribute scaling
+            this.minDmg = this.baseMinDmg + totalItemMinDmgBonus;
+            this.maxDmg = this.baseMaxDmg + totalItemMaxDmgBonus;
+            
+            if (this.name === '战士') {
+                this.minDmg += Math.floor(this.currentStr / 3); // Slightly less scaling unarmed
+                this.maxDmg += Math.floor(this.currentStr / 3);
+            } else if (this.name === '法师' || this.name === '牧师') {
+                this.minDmg += Math.floor(this.currentInt / 5);
+                this.maxDmg += Math.floor(this.currentInt / 5);
+            }
+        }
+        
+        // 4. Clamp current HP/Resource to new max values
+        this.hp = WoW.Core.Utils.clamp(this.hp, 0, this.maxHp);
+        this.resource = WoW.Core.Utils.clamp(this.resource, 0, this.maxResource);
     }
 
     update(dt) {
         if (this.isDead) return;
 
-        // Buffs
         this.buffs = this.buffs.filter(b => {
             b.duration -= dt;
             return b.duration > 0;
         });
 
-        // Swing Timer
         if (this.swingTimer > 0) this.swingTimer -= dt;
 
-        // Auto Attack Logic
         if (this.target && !this.target.isDead) {
             const dist = WoW.Core.Utils.getCenterDistance(this, this.target);
-            // Default range for melee is small, ranged will override
             const range = this.name === "法师" || this.name === "牧师" ? 400 : 80;
             
             if (dist <= range && this.swingTimer <= 0) {
-                // Healers shouldn't auto attack allies
                 if (this.name === "牧师" && this.target.name !== "训练假人") return;
-                
                 this.performAutoAttack(this.target);
             }
         }
@@ -134,27 +198,24 @@ WoW.Entities.Unit = class {
     }
 
     drawHealthBar(ctx) {
-        if (this.isDead) return; // Don't draw health bar for dead units
+        if (this.isDead) return;
 
-        const barWidth = this.width + 10; // Slightly wider than unit
+        const barWidth = this.width + 10; 
         const barHeight = 5;
-        const barX = this.x - 5; // Center the bar above unit
-        const barY = this.y - 15; // Above the unit
+        const barX = this.x - 5; 
+        const barY = this.y - 15; 
 
-        // Background bar
         ctx.fillStyle = '#333';
         ctx.fillRect(barX, barY, barWidth, barHeight);
 
-        // Health fill
         const healthPct = this.hp / this.maxHp;
-        let healthColor = '#2ecc71'; // Green
-        if (healthPct < 0.6) healthColor = '#f1c40f'; // Yellow
-        if (healthPct < 0.25) healthColor = '#e74c3c'; // Red
+        let healthColor = '#2ecc71'; 
+        if (healthPct < 0.6) healthColor = '#f1c40f'; 
+        if (healthPct < 0.25) healthColor = '#e74c3c'; 
 
         ctx.fillStyle = healthColor;
         ctx.fillRect(barX, barY, barWidth * healthPct, barHeight);
         
-        // Border
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1;
         ctx.strokeRect(barX, barY, barWidth, barHeight);
