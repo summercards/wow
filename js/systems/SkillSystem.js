@@ -5,10 +5,18 @@ WoW.Systems.SkillSystem = class {
     }
 
     cast(source, skillId, target) {
+        console.log(`SkillSystem.cast called: Source=${source.name}, SkillId=${skillId}, Target=${target ? target.name : 'None'}`);
         const skill = source.skills[skillId];
-        if (!skill) return;
+        if (!skill) {
+            console.error(`SkillSystem.cast: Skill ${skillId} not found for ${source.name}`);
+            return;
+        }
+        console.log(`Skill details: Name=${skill.name}, currentCd=${skill.currentCd}, cost=${skill.cost}, targetType=${skill.targetType}`);
 
-        if (skill.currentCd > 0) return;
+        if (skill.currentCd > 0) {
+            this.battleSystem.addCombatText(source.x, source.y - 40, "冷却中", "#aaa");
+            return;
+        }
 
         // Resource Check
         if (source.resource !== undefined && source.resource < skill.cost) {
@@ -29,6 +37,25 @@ WoW.Systems.SkillSystem = class {
                 this.battleSystem.addCombatText(source.x, source.y - 40, "无目标", "#aaa");
                 return;
             }
+            
+            // --- 新增：目标类型判定 ---
+            const isTargetFriendly = WoW.State.Party.includes(target);
+            const isTargetEnemy = WoW.State.Enemies.includes(target);
+
+            if (skill.targetType === 'friend' && !isTargetFriendly) {
+                this.battleSystem.addCombatText(source.x, source.y - 40, "目标非友方", "#f00");
+                return;
+            }
+            if (skill.targetType === 'enemy' && !isTargetEnemy) {
+                this.battleSystem.addCombatText(source.x, source.y - 40, "目标非敌方", "#f00");
+                return;
+            }
+            if (skill.targetType === 'self' && target !== source) {
+                this.battleSystem.addCombatText(source.x, source.y - 40, "只能对自己施放", "#f00");
+                return;
+            }
+            // --- 目标类型判定结束 ---
+
             const dist = WoW.Core.Utils.getCenterDistance(source, target);
             if (skill.rangeMin > 0 && dist < skill.rangeMin) {
                 this.battleSystem.addCombatText(source.x, source.y - 40, "太近了", "#aaa");
@@ -37,6 +64,12 @@ WoW.Systems.SkillSystem = class {
             if (skill.rangeMax > 0 && dist > skill.rangeMax) {
                 this.battleSystem.addCombatText(source.x, source.y - 40, "距离太远", "#aaa");
                 return;
+            }
+        } else if (skill.castType === 'self') {
+            // 如果是对自己施放的技能，确保目标是自己或者没有提供目标
+            if (target && target !== source) {
+                 this.battleSystem.addCombatText(source.x, source.y - 40, "只能对自己施放", "#f00");
+                 return;
             }
         }
 
@@ -59,6 +92,21 @@ WoW.Systems.SkillSystem = class {
                     this.battleSystem.addCombatText(target.x, target.y - 30, "火球术", '#e67e22');
                 });
             }
+            if (skill.id === 2) { // Fire Blast (火焰冲击)
+                this.vfxSystem.spawnExplosion(target.x + target.width/2, target.y + target.height/2, '#e74c3c');
+                this.battleSystem.dealDamage(source, target, 1.5);
+                this.battleSystem.addCombatText(target.x, target.y - 30, "火焰冲击", '#e74c3c');
+            }
+            if (skill.id === 3) { // Frost Nova (冰霜新星)
+                this.vfxSystem.spawnNova(source, '#3498db', skill.rangeMax);
+                const targets = this.getAoETargets(source, skill.rangeMax, 'enemy');
+                targets.forEach(t => {
+                    t.addBuff({ name: 'frozen', duration: 4 }); // 4秒定身
+                    this.battleSystem.dealDamage(source, t, 0.5);
+                    this.battleSystem.addCombatText(t.x, t.y - 30, "被冻结", '#3498db');
+                });
+                this.battleSystem.addCombatText(source.x, source.y - 50, "冰霜新星", '#3498db');
+            }
         }
         // Priest Skills
         else if (source.name === '牧师') {
@@ -66,11 +114,29 @@ WoW.Systems.SkillSystem = class {
                 this.vfxSystem.spawnBeam(source, target, '#f1c40f'); // Yellow beam
                 this.battleSystem.heal(source, target, skill.value);
             }
-            if (skill.id === 2) { // Smite
-                this.vfxSystem.spawnBeam(source, target, '#f39c12'); // Orange/Gold beam
-                this.battleSystem.dealDamage(source, target, 1.2);
-                this.battleSystem.addCombatText(target.x, target.y - 30, "惩击", '#f1c40f');
-                this.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#f39c12');
+            if (skill.id === 2) { // Power Word: Shield (真言术：盾)
+                const shieldValue = skill.value + (source.currentInt * 5); // 基础值 + 智力加成
+                target.absorbShield += shieldValue;
+                target.addBuff({ name: '真言术：盾', duration: 15 });
+                this.battleSystem.addCombatText(target.x, target.y - 40, `护盾 (${shieldValue})`, '#fff');
+                this.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#f1c40f');
+            }
+            if (skill.id === 3) { // Holy Nova (神圣新星)
+                this.vfxSystem.spawnNova(source, '#f1c40f', skill.rangeMax);
+                
+                // Heal Allies
+                const friends = this.getAoETargets(source, skill.rangeMax, 'friend');
+                friends.forEach(f => {
+                    this.battleSystem.heal(source, f, skill.value);
+                });
+
+                // Damage Enemies
+                const enemies = this.getAoETargets(source, skill.rangeMax, 'enemy');
+                enemies.forEach(e => {
+                    this.battleSystem.dealDamage(source, e, 0.8);
+                });
+                
+                this.battleSystem.addCombatText(source.x, source.y - 50, "神圣新星", '#f1c40f');
             }
         }
         // Rogue Skills
@@ -149,5 +215,22 @@ WoW.Systems.SkillSystem = class {
         source.addBuff({ name: '盾墙', duration: 10 });
         this.battleSystem.addCombatText(source.x, source.y - 50, "盾墙!", "#fff");
         this.vfxSystem.spawnImpact(source.x + source.width/2, source.y + source.height/2, '#aaa');
+    }
+
+    getAoETargets(source, range, type) {
+        const targets = [];
+        const party = WoW.State.Party || [];
+        const enemies = WoW.State.Enemies || [];
+
+        const potentialTargets = type === 'friend' ? party : enemies;
+
+        potentialTargets.forEach(unit => {
+            if (unit.isDead) return;
+            const dist = WoW.Core.Utils.getCenterDistance(source, unit);
+            if (dist <= range) {
+                targets.push(unit);
+            }
+        });
+        return targets;
     }
 };

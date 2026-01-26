@@ -34,9 +34,25 @@ WoW.Systems.BattleSystem = class {
             damage = Math.floor(damage * 0.25); // 75% 伤害减免
             this.addCombatText(target.x, target.y - 20, "格挡", "#aaa"); // 格挡飘字
             this.addLog(`${target.name} 格挡了 ${source.name} 的攻击。伤害减免至 ${damage}。`);
-        } else {
-            this.addLog(`${source.name} 击中 ${target.name} 造成 ${damage} 点伤害。`);
         }
+
+        // --- 护盾吸收逻辑 ---
+        if (target.absorbShield > 0) {
+            if (target.absorbShield >= damage) {
+                target.absorbShield -= damage;
+                this.addCombatText(target.x, target.y - 20, "吸收", "#fff");
+                // 伤害完全被吸收，不触发受伤逻辑（如怒气生成）
+                return; 
+            } else {
+                damage -= target.absorbShield;
+                this.addCombatText(target.x, target.y - 20, `吸收 (${target.absorbShield})`, "#fff");
+                target.absorbShield = 0;
+                // 护盾破裂，移除护盾Buff (如果有)
+                // 这里简化处理，不直接移除Buff，而是让Buff自然过期或在Unit.update中检测
+            }
+        }
+
+        this.addLog(`${source.name} 击中 ${target.name} 造成 ${damage} 点伤害。`);
 
         // --- 应用伤害 ---
         target.hp -= damage; // 扣除目标生命值

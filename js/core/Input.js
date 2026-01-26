@@ -12,7 +12,7 @@ WoW.Core.Input = function() {
         const key = e.key.toLowerCase();
         keys[key] = true;
         // 阻止默认行为，防止浏览器滚动、Tab 键切换焦点、F键打开菜单等干扰游戏操作。
-        if(['arrowup','arrowdown','arrowleft','arrowright',' ','tab','f1','f2','f3','f4','f5'].indexOf(key) > -1) {
+        if(['arrowup','arrowdown','arrowleft','arrowright',' ','tab','6','7','8','9','0','r'].indexOf(key) > -1) {
             e.preventDefault();
         }
     });

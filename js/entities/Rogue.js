@@ -36,6 +36,7 @@ WoW.Content.Rogue = class extends WoW.Entities.Unit {
                 id: 1,
                 name: '影袭', // Sinister Strike
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 40, // 消耗能量
                 rangeMin: 0,
                 rangeMax: 80, // 近战范围
@@ -47,6 +48,7 @@ WoW.Content.Rogue = class extends WoW.Entities.Unit {
                 id: 2,
                 name: '剔骨', // Eviscerate (终结技，简化为直接伤害)
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 35,
                 rangeMin: 0,
                 rangeMax: 80,
@@ -58,6 +60,7 @@ WoW.Content.Rogue = class extends WoW.Entities.Unit {
                 id: 3,
                 name: '疾跑', // Sprint (简化为短时间加速，不消耗能量)
                 castType: 'self',
+                targetType: 'self', // 新增：目标类型为自己
                 cost: 0,
                 rangeMin: 0,
                 rangeMax: 0,

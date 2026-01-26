@@ -55,6 +55,10 @@ WoW.Entities.Unit = class {
         this.maxResource = this.baseMaxResource;
         /** @property {number} resource 当前资源值。 */
         this.resource = this.maxResource; 
+        
+        /** @property {number} absorbShield 当前吸收盾数值。 */
+        this.absorbShield = 0;
+
         /** @property {number} minDmg 最小伤害。 */
         this.minDmg = this.baseMinDmg;
         /** @property {number} maxDmg 最大伤害。 */
@@ -219,6 +223,12 @@ WoW.Entities.Unit = class {
             return b.duration > 0; // 移除已过期的 Buff
         });
 
+        // 护盾自然衰减 (可选，这里简化为不衰减，直到Buff时间结束或被打爆)
+        // 实际上护盾通常绑定在一个Buff上，这里简化处理，如果身上没有盾Buff，清空护盾值
+        if (!this.hasBuff('真言术：盾')) {
+            this.absorbShield = 0;
+        }
+
         // 更新自动攻击计时器
         if (this.swingTimer > 0) this.swingTimer -= dt;
 
@@ -246,6 +256,19 @@ WoW.Entities.Unit = class {
         if(WoW.State.BattleSystem) {
             WoW.State.BattleSystem.dealDamage(this, target, 1.0); // 造成基础伤害 (100% 武器伤害)
         }
+    }
+
+    /**
+     * 检查单位是否可以移动。
+     * @returns {boolean}
+     */
+    canMove() {
+        if (this.isDead) return false;
+        // 检查是否有定身、昏迷等状态
+        if (this.hasBuff('root') || this.hasBuff('frozen') || this.hasBuff('stun')) {
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -295,6 +318,18 @@ WoW.Entities.Unit = class {
         ctx.fillStyle = healthColor;
         ctx.fillRect(barX, barY, barWidth * healthPct, barHeight);
         
+        // 绘制护盾条 (白色半透明覆盖在血条上)
+        if (this.absorbShield > 0) {
+            const shieldPct = Math.min(this.absorbShield / this.maxHp, 1.0);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.fillRect(barX, barY, barWidth * shieldPct, barHeight);
+            
+            // 护盾边框
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY - 1, barWidth * shieldPct, barHeight + 2);
+        }
+
         // 血条边框
         ctx.strokeStyle = '#000';
         ctx.lineWidth = 1;

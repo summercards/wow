@@ -42,6 +42,7 @@ WoW.Content.Hunter = class extends WoW.Entities.Unit {
                 id: 1,
                 name: '奥术射击', // Arcane Shot
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 30, // 消耗专注
                 rangeMin: 0,
                 rangeMax: 150, // 远程范围
@@ -53,6 +54,7 @@ WoW.Content.Hunter = class extends WoW.Entities.Unit {
                 id: 2,
                 name: '稳固射击', // Steady Shot (回复专注)
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 0, // 固稳射击不消耗专注，反而回复
                 rangeMin: 0,
                 rangeMax: 150,
@@ -65,6 +67,7 @@ WoW.Content.Hunter = class extends WoW.Entities.Unit {
                 id: 3,
                 name: '震荡射击', // Concussive Shot
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 20,
                 rangeMin: 0,
                 rangeMax: 150,
@@ -92,6 +95,9 @@ WoW.Content.Hunter = class extends WoW.Entities.Unit {
         for (let k in this.skills) {
             if (this.skills[k].currentCd > 0) this.skills[k].currentCd -= dt;
         }
+
+        // 如果是玩家控制，则跳过 AI 逻辑
+        if (this === WoW.State.Player) return;
 
         // 获取队友中的战士
         const warrior = this.getWarrior();

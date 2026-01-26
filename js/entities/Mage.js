@@ -32,12 +32,37 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
                 id: 1,
                 name: '火球术',
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 150,
                 rangeMin: 0,
                 rangeMax: 400,
                 cd: 2.5,
                 currentCd: 0,
                 color: '#e67e22'
+            },
+            2: { // 火焰冲击 (Fire Blast)
+                id: 2,
+                name: '火焰冲击',
+                castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
+                cost: 80,
+                rangeMin: 0,
+                rangeMax: 200, // 短射程
+                cd: 8, // 较短CD
+                currentCd: 0,
+                color: '#e74c3c'
+            },
+            3: { // 冰霜新星 (Frost Nova)
+                id: 3,
+                name: '冰霜新星',
+                castType: 'self',
+                targetType: 'self', // 新增：对自身施放，影响周围敌人
+                cost: 100, // AoE技能通常消耗较高
+                rangeMin: 0,
+                rangeMax: 150, // AoE范围
+                cd: 20, // 长CD
+                currentCd: 0,
+                color: '#3498db'
             }
         };
 
@@ -103,9 +128,30 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
                     this.y += Math.sin(angle) * this.speed * dt;
                 }
 
-                // 攻击逻辑
-                if (this.skills[1] && this.skills[1].currentCd <= 0 && dist <= 400 && this.resource >= this.skills[1].cost) {
+                // 技能释放优先级 (严格按照优先级执行)
+                // 1. 冰霜新星 (如果敌人太近，且有至少一个敌人需要被冻结)
+                const skill3 = this.skills[3];
+                if (skill3 && skill3.currentCd <= 0 && this.resource >= skill3.cost) {
+                    // 只有在技能存在时才计算附近的敌人
+                    const nearbyEnemies = WoW.State.Enemies.filter(e => !e.isDead && WoW.Core.Utils.getCenterDistance(this, e) < skill3.rangeMax + 20);
+                    if (nearbyEnemies.length >= 1 && dist < skill3.rangeMax + 20) {
+                         WoW.State.SkillSystem.cast(this, 3, this); // 冰霜新星是自身 AoE
+                         return; // 施放后返回，确保优先级
+                    }
+                }
+
+                // 2. 火焰冲击 (瞬发，目标较近时使用，优先级高于火球)
+                const skill2 = this.skills[2];
+                if (skill2 && skill2.currentCd <= 0 && dist <= skill2.rangeMax && this.resource >= skill2.cost) {
+                    WoW.State.SkillSystem.cast(this, 2, target);
+                    return; // 施放后返回，确保优先级
+                }
+
+                // 3. 火球术 (主输出技能，CD短，伤害高)
+                const skill1 = this.skills[1];
+                if (skill1 && skill1.currentCd <= 0 && dist <= skill1.rangeMax && this.resource >= skill1.cost) {
                     WoW.State.SkillSystem.cast(this, 1, target);
+                    return; // 施放后返回，确保优先级
                 }
             }
         }

@@ -27,16 +27,16 @@ WoW.Systems.CareerSelection = class {
                 color: '#3498db',
                 description: '远程法术输出，高爆发',
                 resource: '法力',
-                skills: ['火球术'],
+                skills: ['火球术', '火焰冲击', '冰霜新星'],
                 icon: '🔥'
             },
             priest: {
                 id: 'priest',
                 name: '牧师',
                 color: '#ffffff',
-                description: '治疗职业，为队友提供治疗',
+                description: '治疗/辅助职业，为队友提供治疗与护盾',
                 resource: '法力',
-                skills: ['治疗术', '惩击'],
+                skills: ['治疗术', '真言术：盾', '神圣新星'],
                 icon: '✨'
             },
             rogue: {

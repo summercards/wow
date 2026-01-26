@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JS Load Test</title>
+    <style>
+        body { background: #222; color: #eee; font-family: monospace; padding: 20px; }
+        .status { margin-bottom: 10px; padding: 5px; border-left: 5px solid #555; }
+        .success { border-color: #0f0; }
+        .fail { border-color: #f00; color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>JavaScript File Load Test</h1>
+    <div id="results"></div>
+
+    <script>
+        function logStatus(filename, success, message) {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'status ' + (success ? 'success' : 'fail');
+            div.textContent = `${success ? '✅' : '❌'} ${filename}: ${message}`;
+            resultsDiv.appendChild(div);
+            if (!success) {
+                console.error(`Error in ${filename}: ${message}`);
+            } else {
+                console.log(`${filename}: ${message}`);
+            }
+            return success;
+        }
+    </script>
+
+    <!-- 1. Namespace Definition -->
+    <script src="js/namespace.js"></script>
+    <script>
+        if (!logStatus('js/namespace.js', typeof WoW !== 'undefined', 'WoW namespace defined.')) throw new Error('Namespace failed.');
+    </script>
+
+    <!-- 2. Core Modules -->
+    <script src="js/core/Constants.js"></script>
+    <script>
+        if (!logStatus('js/core/Constants.js', typeof WoW.Core.Constants !== 'undefined', 'WoW.Core.Constants defined.')) throw new Error('Constants failed.');
+    </script>
+    <script src="js/core/Utils.js"></script>
+    <script>
+        if (!logStatus('js/core/Utils.js', typeof WoW.Core.Utils !== 'undefined', 'WoW.Core.Utils defined.')) throw new Error('Utils failed.');
+    </script>
+    <script src="js/core/Input.js"></script>
+    <script>
+        if (!logStatus('js/core/Input.js', typeof WoW.Core.Input !== 'undefined', 'WoW.Core.Input defined.')) throw new Error('Input failed.');
+    </script>
+    <script src="js/core/EventEmitter.js"></script>
+    <script>
+        if (!logStatus('js/core/EventEmitter.js', typeof WoW.Core.EventEmitter !== 'undefined', 'WoW.Core.EventEmitter defined.')) throw new Error('EventEmitter failed.');
+    </script>
+    <script src="js/core/Items.js"></script>
+    <script>
+        if (!logStatus('js/core/Items.js', typeof WoW.Core.Items !== 'undefined', 'WoW.Core.Items defined.')) throw new Error('Items failed.');
+    </script>
+
+    <!-- 3. Systems (Logic) -->
+    <script src="js/systems/BattleSystem.js"></script>
+    <script>
+        if (!logStatus('js/systems/BattleSystem.js', typeof WoW.Systems.BattleSystem !== 'undefined', 'WoW.Systems.BattleSystem defined.')) throw new Error('BattleSystem failed.');
+    </script>
+    <script src="js/systems/VFXSystem.js"></script>
+    <script>
+        if (!logStatus('js/systems/VFXSystem.js', typeof WoW.Systems.VFXSystem !== 'undefined', 'WoW.Systems.VFXSystem defined.')) throw new Error('VFXSystem failed.');
+    </script>
+    <script src="js/systems/SkillSystem.js"></script>
+    <script>
+        if (!logStatus('js/systems/SkillSystem.js', typeof WoW.Systems.SkillSystem !== 'undefined', 'WoW.Systems.SkillSystem defined.')) throw new Error('SkillSystem failed.');
+    </script>
+    <script src="js/systems/InventorySystem.js"></script>
+    <script>
+        if (!logStatus('js/systems/InventorySystem.js', typeof WoW.Systems.InventorySystem !== 'undefined', 'WoW.Systems.InventorySystem defined.')) throw new Error('InventorySystem failed.');
+    </script>
+    <script src="js/systems/CareerSelection.js"></script>
+    <script>
+        if (!logStatus('js/systems/CareerSelection.js', typeof WoW.Systems.CareerSelection !== 'undefined', 'WoW.Systems.CareerSelection defined.')) throw new Error('CareerSelection failed.');
+    </script>
+
+    <!-- 4. 3C / Base Entities -->
+    <script src="js/3c/Camera.js"></script>
+    <script>
+        if (!logStatus('js/3c/Camera.js', typeof WoW.Core.Camera !== 'undefined', 'WoW.Core.Camera defined.')) throw new Error('Camera failed.'); // Assuming Camera is in Core
+    </script>
+    <script src="js/3c/Controller.js"></script>
+    <script>
+        if (!logStatus('js/3c/Controller.js', typeof WoW.Core.Controller !== 'undefined', 'WoW.Core.Controller defined.')) throw new Error('Controller failed.');
+    </script>
+    <script src="js/3c/Unit.js"></script>
+    <script>
+        if (!logStatus('js/3c/Unit.js', typeof WoW.Entities.Unit !== 'undefined', 'WoW.Entities.Unit defined.')) throw new Error('Unit failed.');
+    </script>
+
+    <!-- 5. Content (Specific Implementations) -->
+    <script src="js/entities/Warrior.js"></script>
+    <script>
+        if (!logStatus('js/entities/Warrior.js', typeof WoW.Content.Warrior !== 'undefined', 'WoW.Content.Warrior defined.')) throw new Error('Warrior failed.');
+    </script>
+    <script src="js/entities/Mage.js"></script>
+    <script>
+        if (!logStatus('js/entities/Mage.js', typeof WoW.Content.Mage !== 'undefined', 'WoW.Content.Mage defined.')) throw new Error('Mage failed.');
+    </script>
+    <script src="js/entities/Priest.js"></script>
+    <script>
+        if (!logStatus('js/entities/Priest.js', typeof WoW.Content.Priest !== 'undefined', 'WoW.Content.Priest defined.')) throw new Error('Priest failed.');
+    </script>
+    <script src="js/entities/Rogue.js"></script>
+    <script>
+        if (!logStatus('js/entities/Rogue.js', typeof WoW.Content.Rogue !== 'undefined', 'WoW.Content.Rogue defined.')) throw new Error('Rogue failed.');
+    </script>
+    <script src="js/entities/Hunter.js"></script>
+    <script>
+        if (!logStatus('js/entities/Hunter.js', typeof WoW.Content.Hunter !== 'undefined', 'WoW.Content.Hunter defined.')) throw new Error('Hunter failed.');
+    </script>
+    <script src="js/entities/TargetDummy.js"></script>
+    <script>
+        if (!logStatus('js/entities/TargetDummy.js', typeof WoW.Content.TargetDummy !== 'undefined', 'WoW.Content.TargetDummy defined.')) throw new Error('TargetDummy failed.');
+    </script>
+
+    <!-- 6. Main Entry Point -->
+    <script src="js/Main.js"></script>
+    <script>
+        if (!logStatus('js/Main.js', true, 'Main.js loaded and executed. (Check console for further errors)')) {
+            // Main.js doesn't define a global object in WoW namespace, just runs onload.
+            // So we just check if it loads without script error.
+        }
+    </script>
+</body>
+</html>

@@ -35,6 +35,11 @@ WoW.Core.Controller = class {
          *                             每次按下 Tab 键时触发。
          */
         if (this.input.isDown('tab')) intent.actions.push('ACTION_NEXT_TARGET');
+        /**
+         * @constant {string} ACTION_NEXT_PARTY_TARGET 切换队友目标的动作标识。
+         *                             每次按下 'r' 键时触发。
+         */
+        if (this.input.isDown('r')) intent.actions.push('ACTION_NEXT_PARTY_TARGET');
 
         // --- 职业切换 (6-0 数字键) ---
         if (this.input.isDown('6')) intent.actions.push('SWITCH_CAREER_1');

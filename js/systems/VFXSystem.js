@@ -60,6 +60,43 @@ WoW.Systems.VFXSystem = class {
         }
     }
 
+    // Spawn a larger explosion effect (e.g., Fire Blast)
+    spawnExplosion(x, y, color) {
+        for(let i=0; i<20; i++) {
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random()-0.5) * 200,
+                vy: (Math.random()-0.5) * 200,
+                life: 0.5,
+                maxLife: 0.5,
+                color: color,
+                size: 4
+            });
+        }
+    }
+
+    // Spawn a Nova effect (expanding ring)
+    spawnNova(source, color, range) {
+        const cx = source.x + source.width/2;
+        const cy = source.y + source.height/2;
+        const count = 36;
+        for(let i=0; i<count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const speed = range / 0.5; // Expand to range in 0.5s
+            this.particles.push({
+                x: cx,
+                y: cy,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 0.5,
+                maxLife: 0.5,
+                color: color,
+                size: 3
+            });
+        }
+    }
+
     spawnText(x, y, text, color) {
         // Delegate to BattleSystem for floating text as it's already there
         // Or we could move floating text here later. For now, keep as is.

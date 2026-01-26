@@ -24,6 +24,7 @@ WoW.Content.Warrior = class extends WoW.Entities.Unit {
                 id: 1,
                 name: '冲锋', // Charge
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 0, // 冲锋不消耗怒气，反而会生成怒气
                 rangeMin: 0,
                 rangeMax: 800,
@@ -35,6 +36,7 @@ WoW.Content.Warrior = class extends WoW.Entities.Unit {
                 id: 2,
                 name: '嘲讽', // Taunt
                 castType: 'target',
+                targetType: 'enemy', // 新增：目标类型为敌人
                 cost: 10, // 嘲讽消耗10怒气
                 rangeMin: 0,
                 rangeMax: 200,
@@ -46,6 +48,7 @@ WoW.Content.Warrior = class extends WoW.Entities.Unit {
                 id: 3,
                 name: '盾墙', // Shield Wall
                 castType: 'self',
+                targetType: 'self', // 新增：目标类型为自己
                 cost: 30, // 盾墙消耗30怒气
                 rangeMin: 0,
                 rangeMax: 0,
