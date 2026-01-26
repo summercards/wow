@@ -1,8 +1,13 @@
-// Global Namespace definition
+/**
+ * @file namespace.js
+ * @brief 定义全局命名空间 WoW，用于组织所有游戏模块。
+ *        此模式避免了全局变量污染，并允许在不使用 ES6 模块打包工具的情况下，
+ *        通过 `<script>` 标签按顺序加载 JS 文件。
+ */
 window.WoW = {
-    Core: {},
-    Entities: {},
-    Systems: {},
-    Content: {},
-    State: {}
+    Core: {},       // 核心功能：常量、工具、输入、事件
+    Entities: {},   // 游戏实体：单位基类、角色、怪物等
+    Systems: {},    // 独立系统：战斗、VFX、技能、背包等核心逻辑
+    Content: {},    // 游戏内容：具体的职业实现、物品数据库、假人等
+    State: {}       // 全局状态管理：存放对各系统和实体的引用，方便跨模块访问
 };

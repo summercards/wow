@@ -7,7 +7,18 @@
     <style>
         body { background: #111; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: "Microsoft YaHei", monospace; }
         canvas { border: 2px solid #333; box-shadow: 0 0 20px #000; }
+        #error-log { position: fixed; top: 0; left: 0; color: red; background: rgba(0,0,0,0.8); padding: 10px; z-index: 1000; pointer-events: none; }
     </style>
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            const div = document.createElement('div');
+            div.id = 'error-log';
+            div.innerHTML = `Error: ${msg}<br>File: ${url}<br>Line: ${line}`;
+            document.body.appendChild(div);
+            console.error("Global Error:", msg, url, line, error);
+            return false;
+        };
+    </script>
 </head>
 <body>
     <canvas id="game-canvas"></canvas>
@@ -26,7 +37,8 @@
     <script src="js/systems/BattleSystem.js"></script>
     <script src="js/systems/VFXSystem.js"></script>
     <script src="js/systems/SkillSystem.js"></script>
-    <script src="js/systems/InventorySystem.js"></script> <!-- New Inventory System -->
+    <script src="js/systems/InventorySystem.js"></script>
+    <script src="js/systems/CareerSelection.js"></script> <!-- Career Selection System -->
 
     <!-- 4. 3C / Base Entities -->
     <script src="js/3c/Camera.js"></script>
@@ -37,6 +49,8 @@
     <script src="js/entities/Warrior.js"></script>
     <script src="js/entities/Mage.js"></script>
     <script src="js/entities/Priest.js"></script>
+    <script src="js/entities/Rogue.js"></script> <!-- Added Rogue -->
+    <script src="js/entities/Hunter.js"></script> <!-- Added Hunter -->
     <script src="js/entities/TargetDummy.js"></script>
 
     <!-- 6. Main Entry Point -->

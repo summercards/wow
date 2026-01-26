@@ -1,44 +1,73 @@
 // Main Game Entry
 window.onload = function() {
+    console.log('Game loading...');
+
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = WoW.Core.Constants.CANVAS_WIDTH;
     canvas.height = WoW.Core.Constants.CANVAS_HEIGHT;
 
+    console.log('Canvas initialized');
+
     // Initialize Core & Systems
     const input = new WoW.Core.Input();
     const events = new WoW.Core.EventEmitter();
     const battleSystem = new WoW.Systems.BattleSystem(events);
-    const vfxSystem = new WoW.Systems.VFXSystem(battleSystem); 
-    const skillSystem = new WoW.Systems.SkillSystem(battleSystem, vfxSystem); 
-    const inventorySystem = new WoW.Systems.InventorySystem(input); 
-    const controller = new WoW.Core.Controller(input);
+    const vfxSystem = new WoW.Systems.VFXSystem(battleSystem);
+    const skillSystem = new WoW.Systems.SkillSystem(battleSystem, vfxSystem);
+    const inventorySystem = new WoW.Systems.InventorySystem(input);
+    const careerSelection = new WoW.Systems.CareerSelection();
+
+    console.log('Systems initialized');
 
     WoW.State.BattleSystem = battleSystem;
     WoW.State.SkillSystem = skillSystem;
     WoW.State.VFXSystem = vfxSystem;
 
-    // Initialize Entities
-    const player = new WoW.Content.Warrior(100, 300);
-    const mage = new WoW.Content.Mage(50, 200);
-    const priest = new WoW.Content.Priest(50, 400);
-    
-    // Initial Item Distribution for Player
-    player.inventory[0] = WoW.Core.Items.create(101); // 坚韧之剑
-    player.inventory[1] = WoW.Core.Items.create(103); // 板甲头盔
-    player.inventory[2] = WoW.Core.Items.create(201); // 大地之斧
-    player.inventory[3] = WoW.Core.Items.create(203); // 勇气头盔
-    player.inventory[4] = WoW.Core.Items.create(1001); // 逐风者之剑
-    player.inventory[5] = WoW.Core.Items.create(106); // 防御者护腕
-    player.inventory[6] = WoW.Core.Items.create(105); // 秘术师的戒指
-    player.inventory[7] = WoW.Core.Items.create(204); // 智慧项链
-    player.inventory[8] = WoW.Core.Items.create(1002); // 炎魔之手
+    // Initialize All Career Entities
+    const warrior = new WoW.Content.Warrior(100, 300);
+    const mage = new WoW.Content.Mage(50, 150);
+    const priest = new WoW.Content.Priest(50, 250);
+    const rogue = new WoW.Content.Rogue(50, 350);
+    const hunter = new WoW.Content.Hunter(50, 450);
+
+    console.log('Career entities created');
+
+    // Career mapping for easy access
+    const careers = {
+        warrior: warrior,
+        mage: mage,
+        priest: priest,
+        rogue: rogue,
+        hunter: hunter
+    };
+
+    // Current controlled player
+    let player = null;
+    WoW.State.Player = null; // Expose globally for entities to check
+
+    // Controller for current player
+    const controller = new WoW.Core.Controller(input);
+
+    // Initial Item Distribution for Warrior (default)
+    warrior.inventory[0] = WoW.Core.Items.create(101); // 坚韧之剑
+    warrior.inventory[1] = WoW.Core.Items.create(103); // 板甲头盔
+    warrior.inventory[2] = WoW.Core.Items.create(201); // 大地之斧
+    warrior.inventory[3] = WoW.Core.Items.create(203); // 勇气头盔
+    warrior.inventory[4] = WoW.Core.Items.create(1001); // 逐风者之剑
+    warrior.inventory[5] = WoW.Core.Items.create(106); // 防御者护腕
+    warrior.inventory[6] = WoW.Core.Items.create(105); // 秘术师的戒指
+    warrior.inventory[7] = WoW.Core.Items.create(204); // 智慧项链
+    warrior.inventory[8] = WoW.Core.Items.create(1002); // 炎魔之手
+    warrior.inventory[9] = WoW.Core.Items.create(205); // 刺客的匕首
+    warrior.inventory[10] = WoW.Core.Items.create(206); // 疾风弓
+
     // Automatically equip some starting gear for better stats
-    inventorySystem.equipItem(player, 0); // Equip 坚韧之剑
-    inventorySystem.equipItem(player, 1); // Equip 板甲头盔
+    inventorySystem.equipItem(warrior, 0); // Equip 坚韧之剑
+    inventorySystem.equipItem(warrior, 1); // Equip 板甲头盔
 
     // Group Setup
-    WoW.State.Party = [player, mage, priest];
+    WoW.State.Party = [warrior, mage, priest, rogue, hunter];
 
     // Enemies Setup
     const dummy1 = new WoW.Content.TargetDummy(600, 200);
@@ -46,30 +75,23 @@ window.onload = function() {
     const dummy3 = new WoW.Content.TargetDummy(600, 400);
     
     WoW.State.Enemies = [dummy1, dummy2, dummy3];
-    
-    // Auto-Target
-    player.target = dummy2; // Start with middle one
-    mage.target = player.target;
-    priest.target = player.target;
-    
-    // Enemies target player by default
-    WoW.State.Enemies.forEach(enemy => enemy.target = player);
 
-    // Mouse Input for Inventory
-    canvas.addEventListener('mousedown', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        inventorySystem.handleClick(mouseX, mouseY, player);
-    });
+    // Auto-Target - 所有职业初始不设置目标，需要主动开怪
+    warrior.target = null;
+    mage.target = null;
+    priest.target = null;
+    rogue.target = null;
+    hunter.target = null;
 
-    // Helper for input debounce
-    let lastTabTime = 0;
+    // Enemies target warrior by default (战士是默认坦克)
+    WoW.State.Enemies.forEach(enemy => enemy.target = warrior);
 
     // Game Loop
     let lastTime = 0;
     let isPaused = false;
+
+    console.log('Starting game loop...');
+    requestAnimationFrame(loop);
 
     function loop(timestamp) {
         if (isPaused) return;
@@ -78,9 +100,32 @@ window.onload = function() {
             const dt = (timestamp - lastTime) / 1000;
             lastTime = timestamp;
 
+            // Handle Career Selection
+            if (careerSelection.isOpen) {
+                drawCareerSelection();
+
+                if (careerSelection.update(input)) {
+                    // Career selected, set player
+                    const selectedCareerId = careerSelection.getSelectedCareer();
+                    player = careers[selectedCareerId];
+                    WoW.State.Player = player;
+
+                    // Set initial target for selected player
+                    player.target = dummy2;
+
+                    // Add mouse input for inventory
+                    canvas.addEventListener('mousedown', handleMouseDown);
+
+                    console.log(`玩家选择了: ${careerSelection.getCareerName(selectedCareerId)}`);
+                }
+
+                requestAnimationFrame(loop);
+                return;
+            }
+
             update(dt);
             draw();
-            
+
             requestAnimationFrame(loop);
         } catch (e) {
             console.error("Game Loop Error:", e);
@@ -92,12 +137,37 @@ window.onload = function() {
         }
     }
 
+    function handleMouseDown(e) {
+        if (!player) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        inventorySystem.handleClick(mouseX, mouseY, player);
+    }
+
+    function drawCareerSelection() {
+        console.log('Drawing career selection...');
+        // 清空画布
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, WoW.Core.Constants.CANVAS_WIDTH, WoW.Core.Constants.CANVAS_HEIGHT);
+        careerSelection.draw(ctx);
+        console.log('Career selection drawn');
+    }
+
+    // Helper for input debounce
+    let lastTabTime = 0;
+    let lastCareerSwitchTime = 0;
+
     function update(dt) {
-        inventorySystem.update(player); 
+        if (!player) return;
+
+        inventorySystem.update(player);
 
         if (!inventorySystem.isOpen) {
             const intent = controller.getIntent();
-            
+
             // Movement
             if (intent.dx !== 0 || intent.dy !== 0) {
                 const len = Math.sqrt(intent.dx**2 + intent.dy**2);
@@ -110,7 +180,7 @@ window.onload = function() {
                 if (action === 'SKILL_1') skillSystem.cast(player, 1, player.target);
                 if (action === 'SKILL_2') skillSystem.cast(player, 2, player.target);
                 if (action === 'SKILL_3') skillSystem.cast(player, 3, player.target);
-                
+
                 // Target Switching (Tab)
                 if (action === 'ACTION_NEXT_TARGET') {
                     const now = Date.now();
@@ -119,23 +189,42 @@ window.onload = function() {
                         switchTarget();
                     }
                 }
+
+                // Career Switching (6-0 数字键)
+                if (action === 'SWITCH_CAREER_1') switchCareer('warrior');
+                if (action === 'SWITCH_CAREER_2') switchCareer('mage');
+                if (action === 'SWITCH_CAREER_3') switchCareer('priest');
+                if (action === 'SWITCH_CAREER_4') switchCareer('rogue');
+                if (action === 'SWITCH_CAREER_5') switchCareer('hunter');
             });
         }
 
         // Update All Units
-        player.update(dt);
+        warrior.update(dt);
         mage.update(dt);
         priest.update(dt);
-        
+        rogue.update(dt);
+        hunter.update(dt);
+
         // Update Enemies
         WoW.State.Enemies.forEach(e => e.update(dt));
-        
+
         battleSystem.update();
         vfxSystem.update(dt);
-        
-        // Sync Party Targets
-        if (mage.target !== player.target) mage.target = player.target;
-        if (priest.target !== player.target) priest.target = player.target;
+
+        // Sync Party Targets - 只在战士进入战斗时同步，且排除玩家控制的角色
+        if (warrior.inCombat && warrior.target && !warrior.target.isDead) {
+            if (player !== mage && mage.target !== warrior.target) mage.target = warrior.target;
+            if (player !== priest && priest.target !== warrior.target) priest.target = warrior.target;
+            if (player !== rogue && rogue.target !== warrior.target) rogue.target = warrior.target;
+            if (player !== hunter && hunter.target !== warrior.target) hunter.target = warrior.target;
+        } else {
+            // 战士退出战斗时，清除队友的目标（排除玩家）
+            if (player !== mage) mage.target = null;
+            if (player !== priest) priest.target = null;
+            if (player !== rogue) rogue.target = null;
+            if (player !== hunter) hunter.target = null;
+        }
     }
 
     function switchTarget() {
@@ -144,8 +233,20 @@ window.onload = function() {
 
         let currentIndex = liveEnemies.indexOf(player.target);
         let nextIndex = (currentIndex + 1) % liveEnemies.length;
-        
+
         player.target = liveEnemies[nextIndex];
+    }
+
+    function switchCareer(careerId) {
+        const now = Date.now();
+        if (now - lastCareerSwitchTime < 500) return; // 防止快速切换
+        lastCareerSwitchTime = now;
+
+        if (careers[careerId]) {
+            player = careers[careerId];
+            WoW.State.Player = player;
+            console.log(`切换到: ${careerSelection.getCareerName(careerId)}`);
+        }
     }
 
     function draw() {
@@ -171,10 +272,12 @@ window.onload = function() {
             if (!e.isDead) drawUnit(e);
         });
 
-        // Draw Party
-        drawUnit(priest);
-        drawUnit(mage);
-        drawUnit(player);
+        // Draw Party (Iterate WoW.State.Party to ensure everyone is drawn)
+        if (WoW.State.Party) {
+            WoW.State.Party.forEach(member => {
+                drawUnit(member);
+            });
+        }
 
         vfxSystem.draw(ctx);
         battleSystem.draw(ctx);
@@ -234,37 +337,56 @@ window.onload = function() {
 
     function drawUI() {
         // Player Frame
-        drawBar(20, 20, 200, 20, player.hp, player.maxHp, '#e74c3c'); 
-        drawResourceBar(20, 45, 200, 15, player); 
-        
-        // Party Frames (Moved slightly to avoid overlap with wider character panel)
-        const partyFrameY = 160;
-        drawBar(20, partyFrameY, 150, 15, mage.hp, mage.maxHp, '#e74c3c');
-        drawResourceBar(20, partyFrameY + 15, 150, 8, mage);
-        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(mage.name, 25, partyFrameY + 11);
-        
-        drawBar(20, partyFrameY + 30, 150, 15, priest.hp, priest.maxHp, '#e74c3c');
-        drawResourceBar(20, partyFrameY + 45, 150, 8, priest);
-        ctx.fillStyle = '#fff'; ctx.font = '10px Arial'; ctx.fillText(priest.name, 25, partyFrameY + 41);
+        drawBar(20, 20, 200, 20, player.hp, player.maxHp, '#e74c3c');
+        drawResourceBar(20, 45, 200, 15, player);
+
+        // Player Name & Career
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px Microsoft YaHei';
+        ctx.textAlign = 'left';
+        ctx.fillText(player.name, 230, 35);
+        ctx.font = '12px Microsoft YaHei';
+        ctx.fillStyle = '#aaa';
+        ctx.fillText(`当前控制`, 230, 55);
+
+        // Party Frames (Left Side)
+        const startY = 80;
+        const gapY = 35;
+
+        // Mage
+        let y = startY;
+        drawPartyFrame(mage, 20, y, 150, 23, mage === player);
+
+        // Priest
+        y += gapY;
+        drawPartyFrame(priest, 20, y, 150, 23, priest === player);
+
+        // Rogue
+        y += gapY;
+        drawPartyFrame(rogue, 20, y, 150, 23, rogue === player);
+
+        // Hunter
+        y += gapY;
+        drawPartyFrame(hunter, 20, y, 150, 23, hunter === player);
 
         // Action Bar
         const startX = 250;
-        const startY = 500;
+        const actionBarY = 500;
 
-        drawAutoAttackIcon(startX, startY, player);
-        drawSkill(player.skills[1], startX + 50, startY, '1');
-        drawSkill(player.skills[2], startX + 100, startY, '2');
-        drawSkill(player.skills[3], startX + 150, startY, '3');
-        
+        drawAutoAttackIcon(startX, actionBarY, player);
+        drawSkill(player.skills[1], startX + 50, actionBarY, '1');
+        drawSkill(player.skills[2], startX + 100, actionBarY, '2');
+        drawSkill(player.skills[3], startX + 150, actionBarY, '3');
+
         // Combat Log
         const logX = WoW.Core.Constants.CANVAS_WIDTH - 320;
         const logY = WoW.Core.Constants.CANVAS_HEIGHT - 150;
-        
+
         ctx.fillStyle = "rgba(0,0,0,0.5)";
         ctx.fillRect(logX, logY, 300, 140);
         ctx.strokeStyle = "#444";
         ctx.strokeRect(logX, logY, 300, 140);
-        
+
         ctx.font = "12px Courier New";
         battleSystem.combatLog.forEach((msg, i) => {
             ctx.fillStyle = "#ccc";
@@ -273,10 +395,30 @@ window.onload = function() {
             if (msg.includes("恢复")) ctx.fillStyle = "#aaffaa";
             ctx.fillText(msg, logX + 10, logY + 20 + (i * 15));
         });
-        
+
         ctx.fillStyle = "#ffff00";
         ctx.font = "12px Microsoft YaHei";
+        ctx.textAlign = 'left';
         ctx.fillText("按 'I' 打开背包 | 按 'Tab' 切换目标", 10, WoW.Core.Constants.CANVAS_HEIGHT - 10);
+    }
+
+    function drawPartyFrame(unit, x, y, w, h, isControlled) {
+        // Health Bar
+        drawBar(x, y, w, 15, unit.hp, unit.maxHp, '#e74c3c');
+        drawResourceBar(x, y + 15, w, 8, unit);
+
+        // Name
+        ctx.fillStyle = isControlled ? careerSelection.getCareerColor(unit.name.toLowerCase()) : '#fff';
+        ctx.font = isControlled ? 'bold 11px Microsoft YaHei' : '10px Microsoft YaHei';
+        ctx.textAlign = 'left';
+        ctx.fillText(unit.name, x + 5, y + 11);
+
+        // Control indicator
+        if (isControlled) {
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
+        }
     }
 
     function drawBar(x, y, w, h, val, max, color) {
@@ -291,8 +433,10 @@ window.onload = function() {
     
     function drawResourceBar(x, y, w, h, unit) {
         let color = '#ccc';
-        if (unit.resourceType === 'rage') color = '#C41F3B'; 
+        if (unit.resourceType === 'rage') color = WoW.Core.Constants.COLORS.WARRIOR_RAGE; 
         if (unit.resourceType === 'mana') color = '#3498db'; 
+        if (unit.resourceType === 'energy') color = WoW.Core.Constants.COLORS.ROGUE_ENERGY;
+        if (unit.resourceType === 'focus') color = WoW.Core.Constants.COLORS.HUNTER_FOCUS;
         
         ctx.fillStyle = '#333';
         ctx.fillRect(x, y, w, h);
