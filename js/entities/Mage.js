@@ -32,36 +32,39 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
                 id: 1,
                 name: '火球术',
                 castType: 'target',
-                targetType: 'enemy', // 新增：目标类型为敌人
+                targetType: 'enemy',
                 cost: 150,
                 rangeMin: 0,
                 rangeMax: 400,
                 cd: 2.5,
                 currentCd: 0,
+                castTime: 2.0, // 2秒施法时间
                 color: '#e67e22'
             },
             2: { // 火焰冲击 (Fire Blast)
                 id: 2,
                 name: '火焰冲击',
                 castType: 'target',
-                targetType: 'enemy', // 新增：目标类型为敌人
+                targetType: 'enemy',
                 cost: 80,
                 rangeMin: 0,
-                rangeMax: 200, // 短射程
-                cd: 8, // 较短CD
+                rangeMax: 200,
+                cd: 8,
                 currentCd: 0,
+                castTime: 0, // 瞬发
                 color: '#e74c3c'
             },
             3: { // 冰霜新星 (Frost Nova)
                 id: 3,
                 name: '冰霜新星',
                 castType: 'self',
-                targetType: 'self', // 新增：对自身施放，影响周围敌人
-                cost: 100, // AoE技能通常消耗较高
+                targetType: 'self',
+                cost: 100,
                 rangeMin: 0,
-                rangeMax: 150, // AoE范围
-                cd: 20, // 长CD
+                rangeMax: 150,
+                cd: 20,
                 currentCd: 0,
+                castTime: 0, // 瞬发
                 color: '#3498db'
             }
         };

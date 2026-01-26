@@ -122,6 +122,19 @@ WoW.Systems.SkillSystem = class {
             }
         }
 
+        // Check if spell has cast time
+        if (skill.castTime && skill.castTime > 0) {
+            // Start casting
+            if (source.startCast(skillId, target)) {
+                // 扣除资源
+                if(source.resource !== undefined) source.resource -= skill.cost;
+                // 设置冷却（施法开始时就设置）
+                skill.currentCd = skill.cd;
+            }
+            return;
+        }
+
+        // Instant cast spells - execute immediately
         // Execute Cost & CD
         skill.currentCd = skill.cd;
         if(source.resource !== undefined) source.resource -= skill.cost;

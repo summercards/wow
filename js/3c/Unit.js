@@ -78,7 +78,15 @@ WoW.Entities.Unit = class {
         
         /** @property {number} speed 单位的移动速度（像素/秒）。 */
         this.speed = 200;
-        
+
+        // --- 施法状态 ---
+        /** @property {boolean} isCasting 单位是否正在施法。 */
+        this.isCasting = false;
+        /** @property {object} currentCast 当前正在施法的技能信息。 */
+        this.currentCast = null; // { skillId, target, castTime, progress }
+        /** @property {number} castProgress 施法进度（秒）。 */
+        this.castProgress = 0;
+
         /** @property {object} target 单位当前锁定的目标。 */
         this.target = null;
         /** @property {Array<object>} buffs 单位当前拥有的增益/减益效果列表。 */
@@ -223,6 +231,25 @@ WoW.Entities.Unit = class {
             return b.duration > 0; // 移除已过期的 Buff
         });
 
+        // 更新施法进度
+        if (this.isCasting && this.currentCast) {
+            this.castProgress += dt;
+
+            // 施法被打断的条件：移动或受到伤害（简化：只有移动打断）
+            if (this.castProgress < this.currentCast.castTime) {
+                // 检查是否在施法过程中移动了（简化：通过位置变化判断）
+                // 这里可以添加被打断的逻辑
+            }
+
+            // 施法完成
+            if (this.castProgress >= this.currentCast.castTime) {
+                this.completeCast();
+            }
+        }
+
+        // 如果正在施法，不能执行其他动作
+        if (this.isCasting) return;
+
         // 护盾自然衰减 (可选，这里简化为不衰减，直到Buff时间结束或被打爆)
         // 实际上护盾通常绑定在一个Buff上，这里简化处理，如果身上没有盾Buff，清空护盾值
         if (!this.hasBuff('真言术：盾')) {
@@ -237,12 +264,188 @@ WoW.Entities.Unit = class {
             const dist = WoW.Core.Utils.getCenterDistance(this, this.target);
             // 根据职业设置不同的自动攻击范围
             const range = this.name === "法师" || this.name === "牧师" ? 400 : 80; // 远程 vs 近战
-            
+
             if (dist <= range && this.swingTimer <= 0) {
                 // 牧师不自动攻击友方单位或训练假人以外的目标 (简化AI)
                 if (this.name === "牧师" && this.target.name !== "训练假人") return;
-                
+
                 this.performAutoAttack(this.target);
+            }
+        }
+    }
+
+    /**
+     * 开始施法
+     * @param {number} skillId 技能ID
+     * @param {WoW.Entities.Unit} target 目标
+     */
+    startCast(skillId, target) {
+        const skill = this.skills[skillId];
+        if (!skill || skill.castTime === 0) return false;
+
+        this.isCasting = true;
+        this.castProgress = 0;
+        this.currentCast = {
+            skillId: skillId,
+            target: target,
+            castTime: skill.castTime,
+            skill: skill
+        };
+
+        console.log(`${this.name} 开始施法 ${skill.name} (${skill.castTime}秒)`);
+        return true;
+    }
+
+    /**
+     * 完成施法
+     */
+    completeCast() {
+        if (!this.currentCast) return;
+
+        const { skillId, target, skill } = this.currentCast;
+
+        console.log(`${this.name} 完成施法 ${skill.name}`);
+
+        // 执行技能效果
+        if (WoW.State.SkillSystem) {
+            // 直接执行技能效果，不进行再次检查
+            this.isCasting = false;
+            this.castProgress = 0;
+            const savedTarget = target; // 保存目标引用
+            this.currentCast = null;
+
+            // 扣除资源和设置冷却（在SkillSystem.cast中已完成，这里只需执行效果）
+            // 注意：这里需要调用SkillSystem的执行效果部分，跳过检查
+            this.executeSkillEffect(skillId, savedTarget);
+        }
+    }
+
+    /**
+     * 打断施法
+     */
+    interruptCast() {
+        if (!this.isCasting) return;
+
+        console.log(`${this.name} 施法被打断`);
+        this.isCasting = false;
+        this.castProgress = 0;
+        this.currentCast = null;
+        if (WoW.State.BattleSystem) {
+            WoW.State.BattleSystem.addCombatText(this.x, this.y - 40, "被打断", "#ff0000");
+        }
+    }
+
+    /**
+     * 执行技能效果（跳过检查）
+     */
+    executeSkillEffect(skillId, target) {
+        const skill = this.skills[skillId];
+        if (!skill) return;
+
+        // 扣除资源（如果还未扣除）
+        if (this.resource !== undefined && skill.cost > 0) {
+            this.resource -= skill.cost;
+        }
+
+        // 设置冷却（如果还未设置）
+        skill.currentCd = skill.cd;
+
+        // 根据职业执行不同的技能效果
+        if (WoW.State.SkillSystem) {
+            // 直接调用SkillSystem中的执行方法
+            const skillSystem = WoW.State.SkillSystem;
+
+            // Warrior Skills
+            if (this.name === '战士') {
+                if (skill.id === 1) skillSystem.doCharge(this, target);
+                if (skill.id === 2) skillSystem.doTaunt(this, target);
+                if (skill.id === 3) skillSystem.doShieldWall(this);
+            }
+            // Mage Skills
+            else if (this.name === '法师') {
+                if (skill.id === 1) { // 火球术
+                    skillSystem.vfxSystem.spawnProjectile(this, target, '#e67e22', 400, () => {
+                        skillSystem.battleSystem.dealDamage(this, target, 2.5);
+                    });
+                }
+                if (skill.id === 2) { // 火焰冲击
+                    skillSystem.vfxSystem.spawnExplosion(target.x + target.width/2, target.y + target.height/2, '#e74c3c');
+                    skillSystem.battleSystem.dealDamage(this, target, 1.5);
+                }
+                if (skill.id === 3) { // 冰霜新星
+                    skillSystem.vfxSystem.spawnNova(this, '#3498db', skill.rangeMax);
+                    const targets = skillSystem.getAoETargets(this, skill.rangeMax, 'enemy');
+                    targets.forEach(t => {
+                        t.addBuff({ name: 'frozen', duration: 4 });
+                        skillSystem.battleSystem.dealDamage(this, t, 0.5);
+                    });
+                }
+            }
+            // Priest Skills
+            else if (this.name === '牧师') {
+                if (skill.id === 1) { // 治疗术
+                    skillSystem.vfxSystem.spawnBeam(this, target, '#f1c40f');
+                    skillSystem.battleSystem.heal(this, target, skill.value);
+                }
+                if (skill.id === 2) { // 真言术：盾
+                    const shieldValue = skill.value + (this.currentInt * 5);
+                    target.absorbShield += shieldValue;
+                    target.addBuff({ name: '真言术：盾', duration: 15 });
+                    skillSystem.battleSystem.addCombatText(target.x, target.y - 45, `护盾 (${shieldValue})`, '#fff');
+                    skillSystem.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#f1c40f');
+                }
+                if (skill.id === 3) { // 神圣新星
+                    skillSystem.vfxSystem.spawnNova(this, '#f1c40f', skill.rangeMax);
+                    const friends = skillSystem.getAoETargets(this, skill.rangeMax, 'friend');
+                    friends.forEach(f => {
+                        skillSystem.battleSystem.heal(this, f, skill.value);
+                    });
+                    const enemies = skillSystem.getAoETargets(this, skill.rangeMax, 'enemy');
+                    enemies.forEach(e => {
+                        skillSystem.battleSystem.dealDamage(this, e, 0.8);
+                    });
+                }
+            }
+            // Rogue Skills
+            else if (this.name === '盗贼') {
+                if (skill.id === 1) { // 影袭
+                    skillSystem.vfxSystem.spawnBeam(this, target, '#FFF569');
+                    skillSystem.battleSystem.dealDamage(this, target, 1.5);
+                    skillSystem.battleSystem.addCombatText(target.x, target.y - 45, "影袭", '#FFF569');
+                    skillSystem.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#FFF569');
+                }
+                if (skill.id === 2) { // 剔骨
+                    skillSystem.vfxSystem.spawnBeam(this, target, '#FFD700');
+                    skillSystem.battleSystem.dealDamage(this, target, 3.0);
+                    skillSystem.battleSystem.addCombatText(target.x, target.y - 45, "剔骨", '#FFD700');
+                    skillSystem.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#FFD700');
+                }
+                if (skill.id === 3) { // 疾跑
+                    this.addBuff({ name: '疾跑', duration: 10 });
+                    skillSystem.battleSystem.addCombatText(this.x, this.y - 50, "疾跑!", '#00FFFF');
+                    skillSystem.vfxSystem.spawnImpact(this.x + this.width/2, this.y + this.height/2, '#00FFFF');
+                }
+            }
+            // Hunter Skills
+            else if (this.name === '猎人') {
+                if (skill.id === 1) { // 奥术射击
+                    skillSystem.vfxSystem.spawnProjectile(this, target, '#00CCFF', 500, () => {
+                        skillSystem.battleSystem.dealDamage(this, target, 1.5);
+                    });
+                }
+                if (skill.id === 2) { // 稳固射击
+                    if(this.addResource) this.addResource(skill.focusGain);
+                    skillSystem.battleSystem.addCombatText(this.x, this.y - 45, `+${skill.focusGain} 集中`, '#AAAAAA');
+                    skillSystem.vfxSystem.spawnBeam(this, target, '#AAAAAA');
+                    skillSystem.vfxSystem.spawnProjectile(this, target, '#AAAAAA', 400, () => {
+                        skillSystem.battleSystem.dealDamage(this, target, 1.0);
+                    });
+                }
+                if (skill.id === 3) { // 震荡射击
+                    skillSystem.vfxSystem.spawnProjectile(this, target, '#FFD700', 450, () => {
+                        skillSystem.battleSystem.dealDamage(this, target, 0.5);
+                    });
+                }
             }
         }
     }

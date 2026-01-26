@@ -32,12 +32,13 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 id: 1,
                 name: '治疗术',
                 castType: 'target',
-                targetType: 'friend', // 新增：目标类型为友方
+                targetType: 'friend',
                 cost: 200,
                 rangeMin: 0,
                 rangeMax: 500,
                 cd: 3,
                 currentCd: 0,
+                castTime: 2.5, // 2.5秒施法时间
                 color: '#f1c40f',
                 isHeal: true,
                 value: 150
@@ -46,25 +47,27 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 id: 2,
                 name: '真言术：盾',
                 castType: 'target',
-                targetType: 'friend', // 新增：目标类型为友方
-                cost: 100, // 较低蓝耗
+                targetType: 'friend',
+                cost: 100,
                 rangeMin: 0,
-                rangeMax: 400, // 施法距离
-                cd: 6, // 中等CD
+                rangeMax: 400,
+                cd: 6,
                 currentCd: 0,
-                color: '#ffffff', // 白色
-                value: 100 // 基础吸收量
+                castTime: 0, // 瞬发
+                color: '#ffffff',
+                value: 100
             },
             3: { // 神圣新星 (Holy Nova)
                 id: 3,
                 name: '神圣新星',
                 castType: 'self',
-                targetType: 'self', // 新增：对自身施放，影响周围敌友
-                cost: 120, // AoE技能通常消耗较高
+                targetType: 'self',
+                cost: 120,
                 rangeMin: 0,
-                rangeMax: 200, // AoE范围
-                cd: 10, // 中等CD
+                rangeMax: 200,
+                cd: 10,
                 currentCd: 0,
+                castTime: 0, // 瞬发
                 color: '#f1c40f'
             }
         };

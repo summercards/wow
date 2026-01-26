@@ -354,6 +354,35 @@ window.onload = function() {
       ctx.font = '12px Arial';
       ctx.fillText(unit.name, unit.x, unit.y - 10);
 
+      // Cast Bar
+      if (unit.isCasting && unit.currentCast) {
+          const barWidth = unit.width + 10;
+          const barHeight = 4;
+          const barX = unit.x - 5;
+          const barY = unit.y - 25; // 在名字上方
+          const progress = unit.castProgress / unit.currentCast.castTime;
+
+          // Background
+          ctx.fillStyle = '#333';
+          ctx.fillRect(barX, barY, barWidth, barHeight);
+
+          // Fill (purple for casting)
+          ctx.fillStyle = '#a855f7';
+          ctx.fillRect(barX, barY, barWidth * Math.min(progress, 1), barHeight);
+
+          // Border
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+          // Spell name
+          ctx.fillStyle = '#fff';
+          ctx.font = '10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(unit.currentCast.skill.name, unit.x + unit.width/2, barY - 5);
+          ctx.textAlign = 'left';
+      }
+
       // Health Bar on Head
       unit.drawHealthBar(ctx);
   }
