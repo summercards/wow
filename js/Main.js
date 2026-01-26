@@ -156,6 +156,7 @@ window.onload = function() {
 
   // Helper for input debounce
   let lastTabTime = 0;
+  let lastPartyTargetTime = 0;
   let lastCareerSwitchTime = 0;
 
   function update(dt) {
@@ -185,6 +186,15 @@ window.onload = function() {
                   if (now - lastTabTime > 200) { // Simple debounce
                       lastTabTime = now;
                       switchTarget();
+                  }
+              }
+
+              // Party Member Target Switching (R)
+              if (action === 'ACTION_NEXT_PARTY_TARGET') {
+                  const now = Date.now();
+                  if (now - lastPartyTargetTime > 200) { // Simple debounce
+                      lastPartyTargetTime = now;
+                      switchPartyTarget();
                   }
               }
 
@@ -235,6 +245,19 @@ window.onload = function() {
       player.target = liveEnemies[nextIndex];
   }
 
+  function switchPartyTarget() {
+      if (!WoW.State.Party || WoW.State.Party.length === 0) return;
+
+      const livePartyMembers = WoW.State.Party.filter(m => !m.isDead);
+      if (livePartyMembers.length === 0) return;
+
+      let currentIndex = livePartyMembers.indexOf(player.target);
+      let nextIndex = (currentIndex + 1) % livePartyMembers.length;
+
+      player.target = livePartyMembers[nextIndex];
+      console.log(`切换目标到队友: ${player.target.name}`);
+  }
+
   function switchCareer(careerId) {
       const now = Date.now();
       if (now - lastCareerSwitchTime < 500) return; // 防止快速切换
@@ -256,10 +279,12 @@ window.onload = function() {
           const t = player.target;
           ctx.save();
           ctx.translate(t.x + t.width/2, t.y + t.height);
-          ctx.scale(1, 0.5); 
+          ctx.scale(1, 0.5);
           ctx.beginPath();
           ctx.arc(0, 0, 30, 0, Math.PI*2);
-          ctx.strokeStyle = '#ff0000';
+          // Red for enemies, Green for party members
+          const isPartyMember = WoW.State.Party && WoW.State.Party.includes(t);
+          ctx.strokeStyle = isPartyMember ? '#00ff00' : '#ff0000';
           ctx.lineWidth = 3;
           ctx.stroke();
           ctx.restore();
@@ -397,7 +422,7 @@ window.onload = function() {
       ctx.fillStyle = "#ffff00";
       ctx.font = "12px Microsoft YaHei";
       ctx.textAlign = 'left';
-      ctx.fillText("按 'I' 打开背包 | 按 'Tab' 切换目标", 10, WoW.Core.Constants.CANVAS_HEIGHT - 10);
+      ctx.fillText("按 'I' 打开背包 | 按 'Tab' 切换敌人 | 按 'R' 切换队友 | 6-0 切换角色", 10, WoW.Core.Constants.CANVAS_HEIGHT - 10);
   }
 
   function drawPartyFrame(unit, x, y, w, h, isControlled) {

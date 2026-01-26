@@ -2,6 +2,32 @@ WoW.Systems.SkillSystem = class {
     constructor(battleSystem, vfxSystem) {
         this.battleSystem = battleSystem;
         this.vfxSystem = vfxSystem;
+        // Store last error message time for each unit-skill combination
+        this.lastErrorTimes = new Map(); // key: "unitId-skillId", value: timestamp
+    }
+
+    /**
+     * Check if error message can be shown (has cooldown elapsed)
+     * @param {WoW.Entities.Unit} unit The unit attempting the skill
+     * @param {number} skillId The skill ID
+     * @returns {boolean} True if error can be shown, false if on cooldown
+     */
+    canShowError(unit, skillId) {
+        const key = `${unit.name}-${unit.id}-${skillId}`;
+        const lastTime = this.lastErrorTimes.get(key) || 0;
+        const now = Date.now();
+        const cooldown = 500; // 500ms cooldown for error messages
+        return now - lastTime >= cooldown;
+    }
+
+    /**
+     * Record that an error message was shown
+     * @param {WoW.Entities.Unit} unit The unit attempting the skill
+     * @param {number} skillId The skill ID
+     */
+    recordError(unit, skillId) {
+        const key = `${unit.name}-${unit.id}-${skillId}`;
+        this.lastErrorTimes.set(key, Date.now());
     }
 
     cast(source, skillId, target) {
@@ -14,62 +40,85 @@ WoW.Systems.SkillSystem = class {
         console.log(`Skill details: Name=${skill.name}, currentCd=${skill.currentCd}, cost=${skill.cost}, targetType=${skill.targetType}`);
 
         if (skill.currentCd > 0) {
-            this.battleSystem.addCombatText(source.x, source.y - 40, "冷却中", "#aaa");
+            if (this.canShowError(source, skillId)) {
+                this.battleSystem.addCombatText(source.x, source.y - 40, "冷却中", "#aaa");
+                this.recordError(source, skillId);
+            }
             return;
         }
 
         // Resource Check
         if (source.resource !== undefined && source.resource < skill.cost) {
-            let msg = "资源不足";
-            let color = "#ffffff";
-            if (source.resourceType === 'rage') { msg = "怒气不足"; color = "#ff0000"; }
-            else if (source.resourceType === 'mana') { msg = "法力不足"; color = "#3498db"; }
-            else if (source.resourceType === 'energy') { msg = "能量不足"; color = "#FFF569"; }
-            else if (source.resourceType === 'focus') { msg = "集中值不足"; color = "#8F2A00"; }
-            
-            this.battleSystem.addCombatText(source.x, source.y - 40, msg, color);
+            if (this.canShowError(source, skillId)) {
+                let msg = "资源不足";
+                let color = "#ffffff";
+                if (source.resourceType === 'rage') { msg = "怒气不足"; color = "#ff0000"; }
+                else if (source.resourceType === 'mana') { msg = "法力不足"; color = "#3498db"; }
+                else if (source.resourceType === 'energy') { msg = "能量不足"; color = "#FFF569"; }
+                else if (source.resourceType === 'focus') { msg = "集中值不足"; color = "#8F2A00"; }
+
+                this.battleSystem.addCombatText(source.x, source.y - 40, msg, color);
+                this.recordError(source, skillId);
+            }
             return;
+        }
+
+        // For self-cast skills, force target to be source
+        if (skill.castType === 'self') {
+            target = source;
         }
 
         // Range/Target Check
         if (skill.castType === 'target') {
             if (!target) {
-                this.battleSystem.addCombatText(source.x, source.y - 40, "无目标", "#aaa");
+                if (this.canShowError(source, skillId)) {
+                    this.battleSystem.addCombatText(source.x, source.y - 40, "无目标", "#aaa");
+                    this.recordError(source, skillId);
+                }
                 return;
             }
-            
-            // --- 新增：目标类型判定 ---
+
+            // --- 目标类型判定 ---
             const isTargetFriendly = WoW.State.Party.includes(target);
             const isTargetEnemy = WoW.State.Enemies.includes(target);
 
             if (skill.targetType === 'friend' && !isTargetFriendly) {
-                this.battleSystem.addCombatText(source.x, source.y - 40, "目标非友方", "#f00");
+                if (this.canShowError(source, skillId)) {
+                    this.battleSystem.addCombatText(source.x, source.y - 40, "目标非友方", "#f00");
+                    this.recordError(source, skillId);
+                }
                 return;
             }
             if (skill.targetType === 'enemy' && !isTargetEnemy) {
-                this.battleSystem.addCombatText(source.x, source.y - 40, "目标非敌方", "#f00");
+                if (this.canShowError(source, skillId)) {
+                    this.battleSystem.addCombatText(source.x, source.y - 40, "目标非敌方", "#f00");
+                    this.recordError(source, skillId);
+                }
                 return;
             }
             if (skill.targetType === 'self' && target !== source) {
-                this.battleSystem.addCombatText(source.x, source.y - 40, "只能对自己施放", "#f00");
+                if (this.canShowError(source, skillId)) {
+                    this.battleSystem.addCombatText(source.x, source.y - 40, "只能对自己施放", "#f00");
+                    this.recordError(source, skillId);
+                }
                 return;
             }
             // --- 目标类型判定结束 ---
 
             const dist = WoW.Core.Utils.getCenterDistance(source, target);
             if (skill.rangeMin > 0 && dist < skill.rangeMin) {
-                this.battleSystem.addCombatText(source.x, source.y - 40, "太近了", "#aaa");
+                if (this.canShowError(source, skillId)) {
+                    this.battleSystem.addCombatText(source.x, source.y - 40, "太近了", "#aaa");
+                    this.recordError(source, skillId);
+                }
                 return;
             }
             if (skill.rangeMax > 0 && dist > skill.rangeMax) {
-                this.battleSystem.addCombatText(source.x, source.y - 40, "距离太远", "#aaa");
+                if (this.canShowError(source, skillId)) {
+                    this.battleSystem.addCombatText(source.x, source.y - 40, "距离太远", "#aaa");
+                    this.recordError(source, skillId);
+                }
                 return;
-            }
-        } else if (skill.castType === 'self') {
-            // 如果是对自己施放的技能，确保目标是自己或者没有提供目标
-            if (target && target !== source) {
-                 this.battleSystem.addCombatText(source.x, source.y - 40, "只能对自己施放", "#f00");
-                 return;
             }
         }
 
@@ -89,13 +138,13 @@ WoW.Systems.SkillSystem = class {
             if (skill.id === 1) { // Fireball
                 this.vfxSystem.spawnProjectile(source, target, '#e67e22', 400, () => {
                     this.battleSystem.dealDamage(source, target, 2.5);
-                    this.battleSystem.addCombatText(target.x, target.y - 30, "火球术", '#e67e22');
+                    // Don't add duplicate text - dealDamage already shows damage
                 });
             }
             if (skill.id === 2) { // Fire Blast (火焰冲击)
                 this.vfxSystem.spawnExplosion(target.x + target.width/2, target.y + target.height/2, '#e74c3c');
                 this.battleSystem.dealDamage(source, target, 1.5);
-                this.battleSystem.addCombatText(target.x, target.y - 30, "火焰冲击", '#e74c3c');
+                // Don't add extra combat text here - dealDamage already shows damage numbers
             }
             if (skill.id === 3) { // Frost Nova (冰霜新星)
                 this.vfxSystem.spawnNova(source, '#3498db', skill.rangeMax);
@@ -103,7 +152,8 @@ WoW.Systems.SkillSystem = class {
                 targets.forEach(t => {
                     t.addBuff({ name: 'frozen', duration: 4 }); // 4秒定身
                     this.battleSystem.dealDamage(source, t, 0.5);
-                    this.battleSystem.addCombatText(t.x, t.y - 30, "被冻结", '#3498db');
+                    // Show frozen text above damage
+                    this.battleSystem.addCombatText(t.x, t.y - 45, "被冻结", '#3498db');
                 });
                 this.battleSystem.addCombatText(source.x, source.y - 50, "冰霜新星", '#3498db');
             }
@@ -144,17 +194,17 @@ WoW.Systems.SkillSystem = class {
             if (skill.id === 1) { // 影袭
                 this.vfxSystem.spawnBeam(source, target, '#FFF569'); // 近战黄色特效
                 this.battleSystem.dealDamage(source, target, 1.5);
-                this.battleSystem.addCombatText(target.x, target.y - 30, "影袭", '#FFF569');
+                this.battleSystem.addCombatText(target.x, target.y - 45, "影袭", '#FFF569');
                 this.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#FFF569');
             }
             if (skill.id === 2) { // 剔骨
                 this.vfxSystem.spawnBeam(source, target, '#FFD700'); // 终结技金色特效
                 this.battleSystem.dealDamage(source, target, 3.0);
-                this.battleSystem.addCombatText(target.x, target.y - 30, "剔骨", '#FFD700');
+                this.battleSystem.addCombatText(target.x, target.y - 45, "剔骨", '#FFD700');
                 this.vfxSystem.spawnImpact(target.x + target.width/2, target.y + target.height/2, '#FFD700');
             }
             if (skill.id === 3) { // 疾跑
-                source.addBuff({ name: '疾跑', duration: 10 }); 
+                source.addBuff({ name: '疾跑', duration: 10 });
                 this.battleSystem.addCombatText(source.x, source.y - 50, "疾跑!", '#00FFFF');
                 this.vfxSystem.spawnImpact(source.x + source.width/2, source.y + source.height/2, '#00FFFF');
             }
@@ -164,14 +214,14 @@ WoW.Systems.SkillSystem = class {
             if (skill.id === 1) { // 奥术射击
                 this.vfxSystem.spawnProjectile(source, target, '#00CCFF', 500, () => {
                     this.battleSystem.dealDamage(source, target, 1.5);
-                    this.battleSystem.addCombatText(target.x, target.y - 30, "奥术射击", '#00CCFF');
+                    // Don't add duplicate text - dealDamage already shows damage
                 });
             }
             if (skill.id === 2) { // 稳固射击
                 if(source.addResource) source.addResource(skill.focusGain); // 回复集中值
-                this.battleSystem.addCombatText(source.x, source.y - 30, `+${skill.focusGain} 集中`, '#AAAAAA');
+                this.battleSystem.addCombatText(source.x, source.y - 45, `+${skill.focusGain} 集中`, '#AAAAAA');
                 // 稳固射击通常有施法时间，这里简化为瞬发光束+投射物
-                this.vfxSystem.spawnBeam(source, target, '#AAAAAA'); 
+                this.vfxSystem.spawnBeam(source, target, '#AAAAAA');
                 this.vfxSystem.spawnProjectile(source, target, '#AAAAAA', 400, () => {
                      this.battleSystem.dealDamage(source, target, 1.0);
                 });
@@ -179,7 +229,7 @@ WoW.Systems.SkillSystem = class {
             if (skill.id === 3) { // 震荡射击
                 this.vfxSystem.spawnProjectile(source, target, '#FFD700', 450, () => {
                     this.battleSystem.dealDamage(source, target, 0.5);
-                    this.battleSystem.addCombatText(target.x, target.y - 30, "震荡射击", '#FFD700');
+                    // Don't add duplicate text - dealDamage already shows damage
                 });
             }
         }
