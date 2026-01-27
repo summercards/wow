@@ -267,7 +267,10 @@ WoW.Entities.Unit = class {
 
             if (dist <= range && this.swingTimer <= 0) {
                 // 牧师不自动攻击友方单位或训练假人以外的目标 (简化AI)
-                if (this.name === "牧师" && this.target.name !== "训练假人") return;
+                if (this.name === "牧师" && this.target.name !== "训练假人") {
+                    console.warn(`[自动攻击] ${this.name} 目标是 ${this.target.name}，阻止攻击`);
+                    return;
+                }
 
                 this.performAutoAttack(this.target);
             }

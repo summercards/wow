@@ -11,14 +11,6 @@ window.onload = function() {
 
   // Initialize Core & Systems
   const input = new WoW.Core.Input();
-  
-  // Debug window toggle - F12
-  let showDebugLogs = true;
-  input.onKeyPress('`', () => {
-      showDebugLogs = !showDebugLogs;
-      console.log(`Debug logs ${showDebugLogs ? 'enabled' : 'disabled'}`);
-  });
-  
   const events = new WoW.Core.EventEmitter();
   const battleSystem = new WoW.Systems.BattleSystem(events);
   const vfxSystem = new WoW.Systems.VFXSystem(battleSystem);
@@ -168,7 +160,6 @@ window.onload = function() {
   let lastCareerSwitchTime = 0;
 
   function update(dt) {
-      input.resetPressed(); // Reset pressed keys for this frame
       if (!player) return;
 
       inventorySystem.update(player);
@@ -324,10 +315,8 @@ window.onload = function() {
       battleSystem.draw(ctx);
       drawUI();
 
-      // Draw debug logs (only if enabled)
-      if (showDebugLogs) {
-          battleSystem.drawDebugLogs(ctx);
-      }
+      // Draw debug logs
+      battleSystem.drawDebugLogs(ctx);
 
       inventorySystem.draw(ctx, player);
   }

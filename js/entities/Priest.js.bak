@@ -68,8 +68,7 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 cd: 10,
                 currentCd: 0,
                 castTime: 0, // 瞬发
-                color: '#f1c40f',
-                value: 80 // AOE治疗队友和伤害敌人的基础值
+                color: '#f1c40f'
             }
         };
 

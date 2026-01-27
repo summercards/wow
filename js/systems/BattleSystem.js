@@ -15,6 +15,24 @@ WoW.Systems.BattleSystem = class {
         this.combatTexts = []; // {x, y, text, color, life, vy}
         /** @property {Array<string>} combatLog 存储战斗日志消息，显示在屏幕右下角。 */
         this.combatLog = []; // Strings of combat history
+
+        // 调试日志
+        this.debugLogs = []; // 存储调试信息
+    }
+
+    /**
+     * 添加调试日志
+     * @param {string} message 调试信息
+     */
+    addDebugLog(message) {
+        this.debugLogs.push({
+            message: message,
+            timestamp: Date.now()
+        });
+        // 只保留最近20条
+        if (this.debugLogs.length > 20) {
+            this.debugLogs.shift();
+        }
     }
 
     /**
@@ -25,6 +43,15 @@ WoW.Systems.BattleSystem = class {
      * @param {number} multiplier 伤害倍数（例如：技能伤害加成）。
      */
     dealDamage(source, target, multiplier = 1.0) {
+        // Debug: 检查目标类型
+        const isPartyMember = WoW.State.Party && WoW.State.Party.includes(target);
+        const isEnemy = WoW.State.Enemies && WoW.State.Enemies.includes(target);
+        if (isPartyMember) {
+            this.addDebugLog(`⚠️ [伤害] ${source.name} → ${target.name} (误伤队友!)`);
+        } else {
+            this.addDebugLog(`💥 [伤害] ${source.name} → ${target.name}`);
+        }
+
         // 计算基础伤害范围内的随机伤害
         let rawDmg = Math.floor(source.minDmg + Math.random() * (source.maxDmg - source.minDmg));
         let damage = Math.floor(rawDmg * multiplier);
@@ -140,5 +167,32 @@ WoW.Systems.BattleSystem = class {
             ctx.fillStyle = t.color;
             ctx.fillText(t.text, t.x, t.y);
         });
+    }
+
+    /**
+     * 绘制调试日志
+     * @param {CanvasRenderingContext2D} ctx Canvas的2D渲染上下文。
+     */
+    drawDebugLogs(ctx) {
+        if (this.debugLogs.length === 0) return;
+
+        const logX = 10;
+        const logY = 100;
+        const lineHeight = 14;
+
+        // 半透明背景
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(logX, logY - 10, 400, this.debugLogs.length * lineHeight + 10);
+
+        // 绘制日志
+        ctx.font = "11px Consolas";
+        ctx.textAlign = "left";
+
+        this.debugLogs.forEach((log, i) => {
+            ctx.fillStyle = "#00ff00"; // 绿色文字
+            ctx.fillText(`[${(log.timestamp % 10000).toString().padStart(4, '0')}] ${log.message}`, logX + 5, logY + i * lineHeight);
+        });
+
+        ctx.textAlign = "left";
     }
 };

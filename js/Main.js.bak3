@@ -14,7 +14,7 @@ window.onload = function() {
   
   // Debug window toggle - F12
   let showDebugLogs = true;
-  input.onKeyPress('`', () => {
+  input.onKeyPress('f12', () => {
       showDebugLogs = !showDebugLogs;
       console.log(`Debug logs ${showDebugLogs ? 'enabled' : 'disabled'}`);
   });
@@ -324,6 +324,7 @@ window.onload = function() {
       battleSystem.draw(ctx);
       drawUI();
 
+      // Draw debug logs
       // Draw debug logs (only if enabled)
       if (showDebugLogs) {
           battleSystem.drawDebugLogs(ctx);

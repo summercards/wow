@@ -186,19 +186,21 @@ WoW.Systems.SkillSystem = class {
             }
             if (skill.id === 3) { // Holy Nova (神圣新星)
                 this.vfxSystem.spawnNova(source, '#f1c40f', skill.rangeMax);
-                
+
                 // Heal Allies
                 const friends = this.getAoETargets(source, skill.rangeMax, 'friend');
+                this.battleSystem.addDebugLog(`[神圣新星] 治疗队友: ${friends.length}人 ${friends.map(f => f.name).join(',')}`);
                 friends.forEach(f => {
                     this.battleSystem.heal(source, f, skill.value);
                 });
 
                 // Damage Enemies
                 const enemies = this.getAoETargets(source, skill.rangeMax, 'enemy');
+                this.battleSystem.addDebugLog(`[神圣新星] 伤害敌人: ${enemies.length}人 ${enemies.map(e => e.name).join(',')}`);
                 enemies.forEach(e => {
                     this.battleSystem.dealDamage(source, e, 0.8);
                 });
-                
+
                 this.battleSystem.addCombatText(source.x, source.y - 50, "神圣新星", '#f1c40f');
             }
         }
@@ -294,6 +296,9 @@ WoW.Systems.SkillSystem = class {
                 targets.push(unit);
             }
         });
+
+        this.battleSystem.addDebugLog(`[AoE] ${type}: ${targets.length}个 ${targets.map(t => t.name).join(',')}`);
+
         return targets;
     }
 };
