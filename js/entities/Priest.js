@@ -181,7 +181,10 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
         }
 
         // === 优先级4：移动/待机 ===
-        if (!warriorInCombat) {
+        // 检查战士的目标是否被激活（开怪）
+        const isWarriorTargetAggroed = warrior.target && warrior.target.isAggroed && !warrior.target.isDead;
+        
+        if (!isWarriorTargetAggroed) {
             // === 非战斗状态：跟随战士 ===
             const distToWarrior = WoW.Core.Utils.getCenterDistance(this, warrior);
             if (distToWarrior > this.followDistance) {
@@ -194,7 +197,7 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 this.x += Math.cos(angle) * this.speed * dt;
                 this.y += Math.sin(angle) * this.speed * dt;
             }
-        } else if (warriorInCombat && warrior.target) {
+        } else if (warrior.target && !warrior.target.isDead) {
             // === 战斗状态：攻击/维持距离 ===
             const target = this.target || warrior.target;
             if (target && !target.isDead) {

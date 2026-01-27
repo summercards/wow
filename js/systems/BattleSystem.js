@@ -43,6 +43,16 @@ WoW.Systems.BattleSystem = class {
      * @param {number} multiplier 伤害倍数（例如：技能伤害加成）。
      */
     dealDamage(source, target, multiplier = 1.0) {
+        // 激活目标的仇恨状态（开怪）
+        if (target && !target.isAggroed) {
+            target.isAggroed = true;
+            this.addDebugLog(`⚔️ [开怪] ${source.name} 激活了 ${target.name}！`);
+            // 如果攻击者是战士，设置目标为战士
+            if (source.name === '战士') {
+                target.target = source;
+            }
+        }
+        
         // Debug: 检查目标类型
         const isPartyMember = WoW.State.Party && WoW.State.Party.includes(target);
         const isEnemy = WoW.State.Enemies && WoW.State.Enemies.includes(target);

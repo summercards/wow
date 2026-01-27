@@ -96,10 +96,10 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
         const warrior = this.getWarrior();
         if (!warrior) return;
 
-        // 检查战士是否在战斗中
-        const warriorInCombat = warrior.inCombat;
-
-        if (!warriorInCombat) {
+        // 检查战士的目标是否被激活（开怪）
+        const isWarriorTargetAggroed = warrior.target && warrior.target.isAggroed && !warrior.target.isDead;
+        
+        if (!isWarriorTargetAggroed) {
             // === 非战斗状态：跟随战士 ===
             const distToWarrior = WoW.Core.Utils.getCenterDistance(this, warrior);
             if (distToWarrior > this.followDistance) {
@@ -112,9 +112,22 @@ WoW.Content.Mage = class extends WoW.Entities.Unit {
                 this.x += Math.cos(angle) * this.speed * dt;
                 this.y += Math.sin(angle) * this.speed * dt;
             }
-        } else if (warriorInCombat && warrior.target) {
-            // === 战斗状态 ===
+            
+            // 重置战斗状态
+            if (this.inCombat) {
+                console.log(`【法师】 战斗结束，重新待机`);
+                this.inCombat = false;
+                this.target = null;
+            }
+        } else if (isWarriorTargetAggroed) {
+            // === 战斗状态：战士已开怪，队友加入战斗 ===
             const target = this.target || warrior.target;
+            
+            // 首次进入战斗的日志
+            if (!this.inCombat) {
+                console.log(`【法师】 战士已开怪！加入战斗，目标: ${warrior.target.name}`);
+            }
+            this.inCombat = true;
             if (target && !target.isDead) {
                 const dist = WoW.Core.Utils.getCenterDistance(this, target);
 

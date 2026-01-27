@@ -342,6 +342,13 @@ window.onload = function() {
           ctx.strokeRect(unit.x, unit.y, unit.width, unit.height);
       }
       
+      // 仇恨状态视觉反馈（开怪后显示红色边框）
+      if (unit.isAggroed) {
+          ctx.strokeStyle = '#ff0000';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(unit.x - 2, unit.y - 2, unit.width + 4, unit.height + 4);
+      }
+      
       ctx.fillRect(unit.x, unit.y, unit.width, unit.height);
       
       // Render Weapon (Only if Main Hand is equipped)

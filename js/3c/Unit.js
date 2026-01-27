@@ -94,6 +94,9 @@ WoW.Entities.Unit = class {
         /** @property {boolean} isDead 单位是否已死亡。 */
         this.isDead = false;
         
+        /** @property {boolean} isAggroed 单位是否被仇恨（进入战斗状态）。 */
+        this.isAggroed = false;
+        
         // --- 背包与装备 ---
         /** @property {Array<object|null>} inventory 单位的背包，存储物品实例。 */
         this.inventory = new Array(16).fill(null); // 16格背包
@@ -459,6 +462,16 @@ WoW.Entities.Unit = class {
      */
     performAutoAttack(target) {
         this.swingTimer = this.swingSpeed; // 重置自动攻击计时器
+        
+        // 激活目标的仇恨状态（开怪）
+        if (target && !target.isAggroed) {
+            target.isAggroed = true;
+            // 如果目标是敌人，设置战士为它的目标
+            if (this.name === '战士') {
+                target.target = this;
+            }
+        }
+        
         if(WoW.State.BattleSystem) {
             WoW.State.BattleSystem.dealDamage(this, target, 1.0); // 造成基础伤害 (100% 武器伤害)
         }
