@@ -215,17 +215,37 @@ WoW.Systems.InventorySystem = class {
         ctx.lineWidth = 2;
         ctx.strokeRect(x, y, this.SLOT_SIZE, this.SLOT_SIZE);
 
-        ctx.fillStyle = item.iconColor || '#888';
-        ctx.fillRect(x + 2, y + 2, this.SLOT_SIZE - 4, this.SLOT_SIZE - 4);
-        
-        ctx.fillStyle = "#000";
-        ctx.font = "bold 14px Arial";
-        ctx.fillText(item.name.charAt(0), x + this.SLOT_SIZE / 2 - 5, y + this.SLOT_SIZE / 2 + 5);
+        // Try to draw icon from AssetLoader
+        const assets = WoW.Core.Assets;
+        // Default to 'icon_sword' if not specified, or based on type
+        let iconKey = item.icon || 'icon_sword';
+        // Simple mapping based on slot if icon missing (optional improvement)
+        if (!item.icon) {
+             if (item.slot === 'head') iconKey = 'icon_helm';
+        }
+
+        const img = assets.getImage(iconKey);
+
+        if (img) {
+            ctx.drawImage(img, x + 2, y + 2, this.SLOT_SIZE - 4, this.SLOT_SIZE - 4);
+        } else {
+            // Fallback
+            ctx.fillStyle = item.iconColor || '#888';
+            ctx.fillRect(x + 2, y + 2, this.SLOT_SIZE - 4, this.SLOT_SIZE - 4);
+            
+            ctx.fillStyle = "#000";
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(item.name.charAt(0), x + this.SLOT_SIZE / 2, y + this.SLOT_SIZE / 2);
+        }
         
         // Item Level (Small text in corner)
         if (item.itemLevel !== undefined) {
             ctx.fillStyle = "#fff";
             ctx.font = "8px Arial";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "alphabetic";
             ctx.fillText(item.itemLevel, x + 2, y + this.SLOT_SIZE - 4); 
         }
     }

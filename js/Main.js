@@ -12,6 +12,26 @@ window.onload = function() {
   // Initialize Core & Systems
   const input = new WoW.Core.Input();
   
+  // Initialize Assets (Create placeholders for now)
+  const assets = WoW.Core.Assets;
+  // Create colored blocks for careers
+  assets.createPlaceholder('warrior_idle', 32, 32, '#8B0000', 'W'); // Dark Red
+  assets.createPlaceholder('mage_idle', 32, 32, '#3498db', 'M');    // Blue
+  assets.createPlaceholder('priest_idle', 32, 32, '#ffffff', 'P');  // White
+  assets.createPlaceholder('rogue_idle', 32, 32, '#FFF569', 'R');   // Yellow
+  assets.createPlaceholder('hunter_idle', 32, 32, '#a7f432', 'H');  // Green
+  assets.createPlaceholder('enemy_idle', 32, 32, '#555555', 'E');   // Grey
+
+  // Map Tiles
+  assets.createPlaceholder('tile_grass', 32, 32, '#27ae60'); // Darker Green
+  assets.createPlaceholder('tile_stone', 32, 32, '#95a5a6'); // Grey
+  assets.createPlaceholder('tile_dirt', 32, 32, '#e67e22');  // Brownish
+
+  // Item Icons (Placeholders)
+  assets.createPlaceholder('icon_sword', 32, 32, '#c0392b', 'Sw');
+  assets.createPlaceholder('icon_helm', 32, 32, '#f1c40f', 'He');
+  assets.createPlaceholder('icon_potion', 32, 32, '#e74c3c', 'Hp');
+  
   // Debug window toggle - F12
   let showDebugLogs = true;
   input.onKeyPress('`', () => {
@@ -25,6 +45,9 @@ window.onload = function() {
   const skillSystem = new WoW.Systems.SkillSystem(battleSystem, vfxSystem);
   const inventorySystem = new WoW.Systems.InventorySystem(input);
   const careerSelection = new WoW.Systems.CareerSelection();
+  
+  // Initialize Map
+  const mapRenderer = new WoW.View.MapRenderer(WoW.Core.Constants.CANVAS_WIDTH, WoW.Core.Constants.CANVAS_HEIGHT);
 
   console.log('Systems initialized');
 
@@ -289,8 +312,11 @@ window.onload = function() {
   }
 
   function draw() {
-      ctx.fillStyle = WoW.Core.Constants.COLORS.FLOOR;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Draw Map
+      mapRenderer.draw(ctx);
+      
+      // ctx.fillStyle = WoW.Core.Constants.COLORS.FLOOR;
+      // ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Selection Circle
       if (player.target && !player.target.isDead) {
@@ -333,7 +359,13 @@ window.onload = function() {
   }
 
   function drawUnit(unit) {
-      ctx.fillStyle = unit.color;
+      // Draw Sprite if available
+      if (unit.sprite && unit.sprite.texture) {
+          unit.sprite.draw(ctx);
+      } else {
+          ctx.fillStyle = unit.color;
+          ctx.fillRect(unit.x, unit.y, unit.width, unit.height);
+      }
       
       // Effects
       if (unit.hasBuff('盾墙')) {
@@ -349,7 +381,7 @@ window.onload = function() {
           ctx.strokeRect(unit.x - 2, unit.y - 2, unit.width + 4, unit.height + 4);
       }
       
-      ctx.fillRect(unit.x, unit.y, unit.width, unit.height);
+      // ctx.fillRect(unit.x, unit.y, unit.width, unit.height); // Removed to avoid double drawing
       
       // Render Weapon (Only if Main Hand is equipped)
       const mainHandItem = unit.equipment[WoW.Core.Constants.SLOTS.MAIN_HAND];
