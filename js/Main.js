@@ -32,6 +32,9 @@ window.onload = function() {
   assets.createPlaceholder('icon_helm', 32, 32, '#f1c40f', 'He');
   assets.createPlaceholder('icon_potion', 32, 32, '#e74c3c', 'Hp');
   
+  // Death State (Tombstone)
+  assets.createPlaceholder('tombstone', 32, 32, '#555555', 'RIP');
+
   // Debug window toggle - F12
   let showDebugLogs = true;
   input.onKeyPress('`', () => {
@@ -196,7 +199,7 @@ window.onload = function() {
 
       inventorySystem.update(player);
 
-      if (!inventorySystem.isOpen) {
+      if (!inventorySystem.isOpen && !player.isDead) { // 死亡无法操作
           const intent = controller.getIntent();
 
           // Movement

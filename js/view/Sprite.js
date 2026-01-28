@@ -49,6 +49,17 @@ WoW.View.Sprite = class {
     }
 
     /**
+     * Change the texture of the sprite dynamically.
+     * @param {string} textureKey 
+     */
+    setTexture(textureKey) {
+        const img = WoW.Core.Assets.getImage(textureKey);
+        if (img) {
+            this.texture = img;
+        }
+    }
+
+    /**
      * Switch animation state.
      * @param {string} animName 
      */
@@ -82,12 +93,16 @@ WoW.View.Sprite = class {
         this.timer += dt;
         if (this.timer >= anim.speed) {
             this.timer = 0;
-            this.currentFrame = (this.currentFrame + 1) % anim.frames;
             
-            // If loop is false and we reached end, clamp or switch to idle
-            if (anim.loop === false && this.currentFrame === 0) {
-                 this.currentFrame = anim.frames - 1;
-                 // Optionally callback or switch state
+            // Check loop property (default true)
+            const loop = anim.loop !== undefined ? anim.loop : true;
+
+            if (loop) {
+                this.currentFrame = (this.currentFrame + 1) % anim.frames;
+            } else {
+                if (this.currentFrame < anim.frames - 1) {
+                    this.currentFrame++;
+                }
             }
         }
     }
