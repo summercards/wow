@@ -103,87 +103,44 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
         // 获取队友中的战士
         const warrior = this.getWarrior();
         if (!warrior) return;
-
-        // 检查战士是否在战斗中
-        const warriorInCombat = warrior.inCombat;
+        
         const party = WoW.State.Party || [];
-        const enemies = WoW.State.Enemies || [];
-
-        // === 优先级1：自保 / 团队保护 (真言术：盾) ===
-        // 检查是否有队友（尤其是战士）血量危险，或者没有护盾
-        let shieldTarget = null;
-        let lowestHpMember = null;
-        let lowestHpPct = 1.0;
-
-        party.forEach(member => {
-            if (member.isDead) return;
-            const pct = member.hp / member.maxHp;
-            if (pct < lowestHpPct) {
-                lowestHpPct = pct;
-                lowestHpMember = member;
-            }
-            // 如果有队友血量低于阈值且没有护盾，考虑套盾
-            const skill2 = this.skills[2];
-            if (skill2 && pct < this.healHpThreshold && member.absorbShield <= 0 && WoW.Core.Utils.getCenterDistance(this, member) <= skill2.rangeMax) {
-                 shieldTarget = member; // 优先给血少的队友套盾
-            }
-        });
-
-        // 优先给战士套盾，如果战士没有盾且血量不是满血
-        const skill2 = this.skills[2];
-        if (skill2 && warrior && warrior.absorbShield <= 0 && warrior.hp / warrior.maxHp < 1.0 && WoW.Core.Utils.getCenterDistance(this, warrior) <= skill2.rangeMax) {
-            shieldTarget = warrior;
-        }
-
-        if (shieldTarget && skill2 && skill2.currentCd <= 0 && this.resource >= skill2.cost) {
-            WoW.State.SkillSystem.cast(this, 2, shieldTarget);
-            return; // 施放盾后立即返回
-        }
-
-        // === 优先级2：群体治疗 / 群体伤害 (神圣新星) ===
-        // 仅在有多个敌人和多个友方需要治疗时使用
-        const skill3 = this.skills[3];
-        const nearbyAlliesNeedingHeal = skill3 ? party.filter(m => !m.isDead && m.hp / m.maxHp < this.healHpThreshold && WoW.Core.Utils.getCenterDistance(this, m) <= skill3.rangeMax).length : 0;
-        const nearbyEnemies = skill3 ? enemies.filter(e => !e.isDead && WoW.Core.Utils.getCenterDistance(this, e) <= skill3.rangeMax).length : 0;
-
-        if (warriorInCombat && skill3 && skill3.currentCd <= 0 && this.resource >= skill3.cost && nearbyEnemies >= 2 && nearbyAlliesNeedingHeal >= 1) {
-             WoW.State.SkillSystem.cast(this, 3, this); // 神圣新星是自身 AoE
-             return; // 施放后返回
-        }
-
-        // === 优先级3：单体治疗 ===
+        
+        // === 检查是否需要治疗 ===
+        let needsHeal = false;
         let healTarget = null;
-        let lowestPct = 1.0;
-
-        party.forEach(member => {
-            const pct = member.hp / member.maxHp;
-            // 优先治疗生命值最低且在范围内的队友
-            const dist = WoW.Core.Utils.getCenterDistance(this, member);
-            if (pct < this.criticalHpThreshold && pct < lowestPct && dist <= this.healRange) {
-                lowestPct = pct;
-                healTarget = member;
+        let lowestHpPct = 1.0;
+        
+        // 优先检查战士（坦克）：血量 < 70%
+        if (!warrior.isDead) {
+            const warriorHpPct = warrior.hp / warrior.maxHp;
+            if (warriorHpPct < 0.7) {
+                needsHeal = true;
+                healTarget = warrior;
+                lowestHpPct = warriorHpPct;
             }
-        });
-
-        // 有治疗目标时执行治疗
-        const skill1 = this.skills[1];
-        if (healTarget && skill1 && skill1.currentCd <= 0 && this.resource >= skill1.cost) {
-            const dist = WoW.Core.Utils.getCenterDistance(this, healTarget);
-            if (dist <= this.healRange) {
-                WoW.State.SkillSystem.cast(this, 1, healTarget);
-            } else {
-                // 移动到治疗范围内
-                const angle = Math.atan2(healTarget.y - this.y, healTarget.x - this.x);
-                this.x += Math.cos(angle) * this.speed * dt;
-                this.y += Math.sin(angle) * this.speed * dt;
-            }
-            return; // 执行治疗后返回，不执行后续逻辑
         }
-
-        // === 优先级4：移动/待机 ===
-        // 检查战士的目标是否被激活（开怪）
+        
+        // 如果战士不需要治疗，检查其他队友：血量 < 60%
+        if (!needsHeal) {
+            party.forEach(member => {
+                if (member === warrior || member.isDead) return;
+                
+                const memberHpPct = member.hp / member.maxHp;
+                const dist = WoW.Core.Utils.getCenterDistance(this, member);
+                
+                if (memberHpPct < 0.6 && memberHpPct < lowestHpPct && dist <= this.healRange) {
+                    needsHeal = true;
+                    healTarget = member;
+                    lowestHpPct = memberHpPct;
+                }
+            });
+        }
+        
+        // === 检查战士的目标是否被激活（开怪）===
         const isWarriorTargetAggroed = warrior.target && warrior.target.isAggroed && !warrior.target.isDead;
         
+        // 如果没有开怪，只跟随战士
         if (!isWarriorTargetAggroed) {
             // === 非战斗状态：跟随战士 ===
             const distToWarrior = WoW.Core.Utils.getCenterDistance(this, warrior);
@@ -197,36 +154,68 @@ WoW.Content.Priest = class extends WoW.Entities.Unit {
                 this.x += Math.cos(angle) * this.speed * dt;
                 this.y += Math.sin(angle) * this.speed * dt;
             }
-        } else if (warrior.target && !warrior.target.isDead) {
-            // === 战斗状态：攻击/维持距离 ===
-            const target = this.target || warrior.target;
-            if (target && !target.isDead) {
-                const dist = WoW.Core.Utils.getCenterDistance(this, target);
-
-                // 保持攻击距离
-                if (dist > this.attackRange) {
-                    const angle = Math.atan2(target.y - this.y, target.x - this.x);
+            
+            // 重置战斗状态
+            if (this.inCombat) {
+                console.log(`【牧师】 战斗结束，重新待机`);
+                this.inCombat = false;
+                this.target = null;
+            }
+            return;
+        }
+        
+        // === 战斗状态：先治疗，再攻击 ===
+        
+        // 优先级1：治疗最需要治疗的队友
+        if (needsHeal && healTarget) {
+            const skill1 = this.skills[1]; // 治疗术
+            if (skill1 && skill1.currentCd <= 0 && this.resource >= skill1.cost) {
+                const dist = WoW.Core.Utils.getCenterDistance(this, healTarget);
+                if (dist <= this.healRange) {
+                    WoW.State.SkillSystem.cast(this, 1, healTarget);
+                    console.log(`【牧师】 治疗 ${healTarget.name} (血量: ${Math.floor(lowestHpPct * 100)}%)`);
+                    return;
+                } else {
+                    // 移动到治疗范围内
+                    const angle = Math.atan2(healTarget.y - this.y, healTarget.x - this.x);
                     this.x += Math.cos(angle) * this.speed * dt;
                     this.y += Math.sin(angle) * this.speed * dt;
-                } else if (dist < this.attackRange - 100) {
-                    // 太近了，稍微后撤
-                    const angle = Math.atan2(this.y - target.y, this.x - target.x);
-                    this.x += Math.cos(angle) * this.speed * dt;
-                    this.y += Math.sin(angle) * this.speed * dt;
+                    return;
                 }
-
-                // 攻击逻辑 (如果都没有治疗或盾牌需求，可以惩击)
-                if (skill2 && skill2.currentCd <= 0 && dist <= this.attackRange && this.resource >= skill2.cost && nearbyAlliesNeedingHeal < 1) {
-                    WoW.State.SkillSystem.cast(this, 2, target);
-                }
+            }
+        }
+        
+        // 优先级2：攻击敌人（惩击）
+        const target = this.target || warrior.target;
+        if (target && !target.isDead) {
+            const dist = WoW.Core.Utils.getCenterDistance(this, target);
+            
+            // 保持攻击距离
+            if (dist > this.attackRange) {
+                const angle = Math.atan2(target.y - this.y, target.x - this.x);
+                this.x += Math.cos(angle) * this.speed * dt;
+                this.y += Math.sin(angle) * this.speed * dt;
+            } else if (dist < this.attackRange - 100) {
+                // 太近了，稍微后撤
+                const angle = Math.atan2(this.y - target.y, this.x - target.x);
+                this.x += Math.cos(angle) * this.speed * dt;
+                this.y += Math.sin(angle) * this.speed * dt;
+            }
+            
+            // 使用惩击攻击
+            const skill2 = this.skills[2];
+            if (skill2 && skill2.currentCd <= 0 && dist <= this.attackRange && this.resource >= skill2.cost) {
+                WoW.State.SkillSystem.cast(this, 2, target);
+                return;
+            }
+            
+            // 如果技能CD中，使用自动攻击
+            if (this.swingTimer <= 0) {
+                this.performAutoAttack(target);
             }
         }
     }
 
-    /**
-     * 获取队伍中的战士
-     * @returns {WoW.Content.Warrior|null} 战士实例，如果不存在则返回null
-     */
     getWarrior() {
         const party = WoW.State.Party || [];
         return party.find(member => member.name === '战士') || null;
